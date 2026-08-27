@@ -62,36 +62,22 @@ Cara ini **100% gratis tanpa kartu kredit**, dan data pengajuan lembur aman
 tersimpan permanen (tidak hilang saat aplikasi di-redeploy). Ada dua bagian:
 menyiapkan database (Turso), lalu men-deploy aplikasi (Vercel).
 
-### Bagian 1 — Buat Database Gratis di Turso
+### Bagian 1 — Buat Database Gratis di Turso (lewat browser, tanpa CLI)
 
-1. Buka [turso.tech](https://turso.tech/) dan daftar akun gratis (bisa pakai
-   akun GitHub, tanpa kartu kredit).
-2. Install Turso CLI di komputer kamu:
-   ```bash
-   curl -sSfL https://get.tur.so/install.sh | bash
-   ```
-   (Pengguna Windows: ikuti petunjuk instalasi di [docs.turso.tech](https://docs.turso.tech/cli/installation).)
-3. Login dari terminal:
-   ```bash
-   turso auth login
-   ```
-4. Buat database baru (bebas ganti nama `spl-form` sesuai selera):
-   ```bash
-   turso db create spl-form
-   ```
-5. Ambil connection URL-nya:
-   ```bash
-   turso db show spl-form --url
-   ```
-   Hasilnya berbentuk `libsql://spl-form-namamu.turso.io` — simpan ini.
-6. Buat token akses:
-   ```bash
-   turso db tokens create spl-form
-   ```
-   Simpan token yang muncul (panjang, diawali `eyJ...`).
+1. Buka [app.turso.tech](https://app.turso.tech/) dan daftar/login (bisa
+   pakai akun GitHub, tanpa kartu kredit).
+2. Di dashboard, klik tombol **Create Database** (atau **New Database**).
+3. Beri nama bebas, misalnya `spl-form`, pilih region terdekat (mis.
+   Singapore), lalu klik **Create**.
+4. Setelah database dibuat, buka halaman detail database tersebut. Cari
+   bagian **URL** — salin nilainya (berbentuk `libsql://spl-form-namamu.turso.io`).
+5. Masih di halaman yang sama, cari tombol **Create Token** (atau
+   **Generate Token**). Klik, lalu salin token yang muncul (teks panjang
+   diawali `eyJ...`). Token ini hanya ditampilkan sekali, jadi simpan dulu
+   di catatan sementara sebelum menutup halaman.
 
-> Alternatif: semua langkah di atas juga bisa dilakukan lewat dashboard web
-> Turso tanpa CLI, jika kamu lebih suka klik-klik di browser.
+Sekarang kamu punya 2 nilai yang dibutuhkan: **URL database** dan
+**auth token**.
 
 ### Bagian 2 — Deploy ke Vercel
 
@@ -103,8 +89,8 @@ menyiapkan database (Turso), lalu men-deploy aplikasi (Vercel).
 
    | Name | Value |
    |---|---|
-   | `TURSO_DATABASE_URL` | URL dari langkah 5 Bagian 1 (`libsql://...`) |
-   | `TURSO_AUTH_TOKEN` | Token dari langkah 6 Bagian 1 |
+   | `TURSO_DATABASE_URL` | URL dari langkah 4 Bagian 1 (`libsql://...`) |
+   | `TURSO_AUTH_TOKEN` | Token dari langkah 5 Bagian 1 |
 
 5. Klik **Deploy**. Tunggu 1-2 menit sampai selesai.
 6. Buka domain yang diberikan Vercel (contoh: `spl-form.vercel.app`), login
