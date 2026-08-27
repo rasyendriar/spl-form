@@ -12,6 +12,7 @@ type Row = {
   jam_selesai: string;
   pekerjaan: string;
   status: string;
+  piket: number | null;
   submitted_by: string;
   created_at: string;
 };
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status') || '';
 
   let sql = `
-    SELECT s.nik, s.tanggal_lembur, s.nama, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.status, s.created_at,
+    SELECT s.nik, s.tanggal_lembur, s.nama, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.status, s.piket, s.created_at,
            u.full_name as submitted_by
     FROM submissions s
     JOIN users u ON u.id = s.user_id
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
 
   const data = rows.map((r) => {
     const netMinutes = parseDurationMinutes(r.jam_mulai, r.jam_selesai);
+    const piket = r.piket === null ? null : r.piket === 1;
     return {
       NIK: r.nik ?? '',
       Tanggal: r.tanggal_lembur,
@@ -68,7 +70,9 @@ export async function GET(request: NextRequest) {
       'Jam Selesai': r.jam_selesai,
       'Durasi Bersih': formatDuration(r.jam_mulai, r.jam_selesai),
       'Jam Bersih (angka)': Math.round((netMinutes / 60) * 100) / 100,
-      'Jam Kotor / Gaji (angka)': Math.round((grossPayMinutes(netMinutes) / 60) * 100) / 100,
+      'Piket Sabtu': piket === null ? '' : piket ? 'Ya' : 'Tidak',
+      'Jam Kotor / Gaji (angka)':
+        Math.round((grossPayMinutes(netMinutes, r.tanggal_lembur, piket) / 60) * 100) / 100,
       Pekerjaan: r.pekerjaan,
       Status: STATUS_LABEL[r.status] ?? r.status,
       'Akun Pengisi': r.submitted_by,
@@ -85,6 +89,7 @@ export async function GET(request: NextRequest) {
     { wch: 10 },
     { wch: 13 },
     { wch: 14 },
+    { wch: 11 },
     { wch: 16 },
     { wch: 40 },
     { wch: 12 },

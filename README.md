@@ -21,6 +21,10 @@ mengekspor rekap data.
     (istirahat siang) dan 17:30–18:30 (istirahat sore) — kalau jam lemburmu
     melewati salah satu (atau keduanya), durasi yang tercatat sudah bersih
     tanpa jam istirahat itu.
+  - Khusus lembur hari **Sabtu untuk posisi Staff**, form akan menanyakan
+    status **piket** per orang (piket = tarif standar, tidak piket = tarif
+    seperti hari Minggu) — lihat bagian "Aturan Perhitungan Jam Lembur" di
+    bawah.
   - Bisa mengisi **beberapa orang sekaligus untuk pekerjaan yang sama** (klik
     "Tambah Orang"), dan **beberapa pekerjaan berbeda dalam satu kali
     submit** (klik "Tambah Pekerjaan Lain") — cocok untuk foreman yang
@@ -63,16 +67,26 @@ Dua aturan bisnis berikut dihitung otomatis oleh sistem (kode di
    diisi user melewati salah satu (atau kedua) jendela ini, waktu yang
    tumpang tindih otomatis dikurangi dari durasi lembur. Contoh: lembur
    17:00–20:00 (3 jam) memotong 1 jam istirahat sore → tercatat 2 jam bersih.
-2. **Jam kotor (dasar pembayaran gaji)**: 1 jam pertama dari durasi bersih
-   dihitung 1x, sisanya dihitung 1,5x. Contoh: 3 jam bersih → 1 jam pertama
-   (× 1) + 2 jam sisanya (× 1,5) = 1 + 3 = **4 jam kotor**. Nilai ini yang
-   ditampilkan di Dashboard dan kolom export sebagai dasar perhitungan gaji
-   lembur.
+   Berlaku untuk hari apa pun (Senin–Minggu).
+2. **Jam kotor (dasar pembayaran gaji)** — dihitung dari durasi bersih
+   (setelah dipotong istirahat), aturannya beda per hari:
+   - **Senin–Sabtu (standar)**: 1 jam pertama × 1,5, sisanya × 2. Contoh: 3
+     jam bersih → 1 jam (× 1,5) + 2 jam (× 2) = 1,5 + 4 = **5,5 jam kotor**.
+   - **Minggu**: seluruh durasi bersih langsung × 2 (tanpa tingkatan jam
+     pertama). Contoh: 3 jam bersih → **6 jam kotor**.
+   - **Sabtu, khusus posisi Staff**: saat mengisi form, tiap orang berposisi
+     Staff yang lembur di hari Sabtu akan ditanya status **piket**. Kalau
+     **piket** → pakai aturan standar Senin–Sabtu (1 jam × 1,5, sisanya × 2).
+     Kalau **tidak piket** → berlaku seperti Minggu (semua jam × 2). Posisi
+     selain Staff di hari Sabtu selalu pakai aturan standar, tidak ditanya
+     piket.
 
-Kalau jam istirahat atau rumus pengali ini berubah di kemudian hari, cukup
-ubah `BREAK_WINDOWS` dan `grossPayMinutes()` di `lib/utils.ts` — semua
-tempat yang menampilkan durasi (form, dashboard, export) otomatis ikut
-menyesuaikan karena semuanya memanggil fungsi yang sama.
+Nilai jam kotor ini yang ditampilkan di Dashboard dan kolom export sebagai
+dasar perhitungan gaji lembur. Kalau jam istirahat atau rumus pengali ini
+berubah di kemudian hari, cukup ubah `BREAK_WINDOWS` dan `grossPayMinutes()`
+di `lib/utils.ts` — semua tempat yang menampilkan durasi (form, dashboard,
+export) otomatis ikut menyesuaikan karena semuanya memanggil fungsi yang
+sama.
 
 ## Teknologi
 

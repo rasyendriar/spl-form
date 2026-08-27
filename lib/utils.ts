@@ -63,13 +63,34 @@ export function parseDurationMinutes(jamMulai: string, jamSelesai: string): numb
 }
 
 /**
- * Jam kotor (dasar pembayaran gaji): 1 jam pertama dihitung 1x, sisanya 1,5x.
+ * Jam kotor (dasar pembayaran gaji). Aturan:
+ * - Minggu: seluruh durasi bersih dikali 2 (flat, tanpa tingkatan jam pertama).
+ * - Senin-Sabtu (standar): 1 jam pertama dikali 1,5, sisanya dikali 2.
+ * - Khusus Sabtu untuk posisi Staff yang TIDAK piket: berlaku seperti Minggu
+ *   (flat dikali 2). Staff yang piket, atau posisi non-Staff, tetap pakai
+ *   aturan standar Senin-Sabtu.
+ *
+ * `piket` hanya relevan untuk lembur hari Sabtu; abaikan (null/undefined)
+ * untuk hari lain atau untuk posisi non-Staff.
  * Input & output dalam menit (output sudah dikali pengali, jadi bisa > durasi bersih).
  */
-export function grossPayMinutes(netMinutes: number): number {
+export function grossPayMinutes(
+  netMinutes: number,
+  tanggalLembur: string,
+  piket?: boolean | null
+): number {
+  const day = dayOfWeek(tanggalLembur);
+  const isSunday = day === 0;
+  const isSaturday = day === 6;
+  const flatDoubleRate = isSunday || (isSaturday && piket === false);
+
+  if (flatDoubleRate) {
+    return netMinutes * 2;
+  }
+
   const firstPortion = Math.min(netMinutes, 60);
   const remaining = Math.max(netMinutes - 60, 0);
-  return firstPortion * 1 + remaining * 1.5;
+  return firstPortion * 1.5 + remaining * 2;
 }
 
 export function formatDuration(jamMulai: string, jamSelesai: string): string {

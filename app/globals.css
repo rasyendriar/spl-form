@@ -31,111 +31,124 @@ body {
   color: var(--color-ink);
 }
 
-.glass-header {
-  @apply sticky top-0 z-30 backdrop-blur-xl bg-white/75 border-b border-black/5;
-}
+/*
+ * IMPORTANT: custom component classes must live inside @layer components so
+ * Tailwind inserts them at the `@tailwind components` point in the compiled
+ * stylesheet, *before* utilities. Without this layer, these rules land at
+ * the end of the file (after `@tailwind utilities`) and — being equal
+ * specificity, single-class selectors — silently beat utility classes like
+ * `pl-10` or `px-3` applied alongside them in JSX, no matter what order the
+ * classNames are written in. That was the cause of the search-icon/text
+ * overlap bug in the employee name field (`.input`'s px-4 was beating the
+ * `pl-10` meant to make room for the icon).
+ */
+@layer components {
+  .glass-header {
+    @apply sticky top-0 z-30 backdrop-blur-xl bg-white/75 border-b border-black/5;
+  }
 
-.card {
-  @apply bg-white rounded-3xl border border-black/5;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.03),
-    0 8px 24px -14px rgba(0, 0, 0, 0.12);
-}
+  .card {
+    @apply bg-white rounded-3xl border border-black/5;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.03),
+      0 8px 24px -14px rgba(0, 0, 0, 0.12);
+  }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 min-h-[44px] text-[15px] font-medium
-    transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98];
-}
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 min-h-[44px] text-[15px] font-medium
+      transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98];
+  }
 
-.btn-primary {
-  @apply btn text-white shadow-sm;
-  background: var(--color-accent);
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
+  .btn-primary {
+    @apply btn text-white shadow-sm;
+    background: var(--color-accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
 
-.btn-secondary {
-  @apply btn bg-black/[0.04] text-[#1d1d1f] hover:bg-black/[0.08];
-}
+  .btn-secondary {
+    @apply btn bg-black/[0.04] text-[#1d1d1f] hover:bg-black/[0.08];
+  }
 
-.btn-danger {
-  @apply btn;
-  background: var(--color-danger-tint);
-  color: var(--color-danger);
-}
-.btn-danger:hover:not(:disabled) {
-  background: #fbdada;
-}
+  .btn-danger {
+    @apply btn;
+    background: var(--color-danger-tint);
+    color: var(--color-danger);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: #fbdada;
+  }
 
-.btn-sm {
-  @apply !px-3.5 !py-1.5 !min-h-[36px] !text-[13px] !gap-1;
-}
+  .btn-sm {
+    @apply px-3.5 py-1.5 min-h-[36px] text-[13px] gap-1;
+  }
 
-.input {
-  @apply w-full rounded-2xl border bg-white px-4 py-2.5 min-h-[44px] text-[15px] transition
-    focus:outline-none focus:ring-4;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-.input:focus {
-  border-color: var(--color-accent);
-  --tw-ring-color: rgb(0 113 227 / 0.15);
-}
-.input:disabled {
-  @apply bg-black/[0.03] text-[color:var(--color-ink-muted)];
-}
+  .input {
+    @apply w-full rounded-2xl border bg-white px-4 py-2.5 min-h-[44px] text-[15px] transition
+      focus:outline-none focus:ring-4;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+  .input:focus {
+    border-color: var(--color-accent);
+    --tw-ring-color: rgb(0 113 227 / 0.15);
+  }
+  .input:disabled {
+    @apply bg-black/[0.03] text-[color:var(--color-ink-muted)];
+  }
 
-.input-sm {
-  @apply !px-3 !py-1.5 !min-h-[36px] !text-[13px];
-}
+  .input-sm {
+    @apply px-3 py-1.5 min-h-[36px] text-[13px];
+  }
 
-.label {
-  @apply block text-[13px] font-medium mb-1.5;
-  color: var(--color-ink-secondary);
-}
+  .label {
+    @apply block text-[13px] font-medium mb-1.5;
+    color: var(--color-ink-secondary);
+  }
 
-.alert-error {
-  @apply rounded-2xl border px-4 py-3 text-sm;
-  background: var(--color-danger-tint);
-  border-color: rgba(208, 59, 59, 0.15);
-  color: #b3261e;
-}
+  .alert-error {
+    @apply rounded-2xl border px-4 py-3 text-sm;
+    background: var(--color-danger-tint);
+    border-color: rgba(208, 59, 59, 0.15);
+    color: #b3261e;
+  }
 
-.alert-success {
-  @apply rounded-2xl border px-4 py-3 text-sm;
-  background: var(--color-success-tint);
-  border-color: rgba(10, 138, 10, 0.15);
-  color: #0a7d0a;
-}
+  .alert-success {
+    @apply rounded-2xl border px-4 py-3 text-sm;
+    background: var(--color-success-tint);
+    border-color: rgba(10, 138, 10, 0.15);
+    color: #0a7d0a;
+  }
 
-.alert-info {
-  @apply rounded-2xl border px-4 py-3 text-sm;
-  background: var(--color-warning-tint);
-  border-color: rgba(185, 121, 10, 0.2);
-  color: #8a5a00;
-}
+  .alert-info {
+    @apply rounded-2xl border px-4 py-3 text-sm;
+    background: var(--color-warning-tint);
+    border-color: rgba(185, 121, 10, 0.2);
+    color: #8a5a00;
+  }
 
-.badge {
-  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
-}
-.badge-pending {
-  @apply badge;
-  background: var(--color-warning-tint);
-  color: #8a5a00;
-}
-.badge-approved {
-  @apply badge;
-  background: var(--color-success-tint);
-  color: #0a7d0a;
-}
-.badge-rejected {
-  @apply badge;
-  background: var(--color-danger-tint);
-  color: #b3261e;
-}
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .badge-pending {
+    @apply badge;
+    background: var(--color-warning-tint);
+    color: #8a5a00;
+  }
+  .badge-approved {
+    @apply badge;
+    background: var(--color-success-tint);
+    color: #0a7d0a;
+  }
+  .badge-rejected {
+    @apply badge;
+    background: var(--color-danger-tint);
+    color: #b3261e;
+  }
 
-.card-interactive {
-  @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+  .card-interactive {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+  }
 }
 
 @keyframes fade-in-up {

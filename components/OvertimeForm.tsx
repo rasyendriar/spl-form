@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, UserPlus, X } from 'lucide-react';
+import { Plus, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
 import { createSubmissionAction } from '@/lib/actions';
 import TimeSelect from './TimeSelect';
 import EmployeePicker, { Employee, PersonValue } from './EmployeePicker';
@@ -18,6 +18,16 @@ let uid = 0;
 function nextId() {
   uid += 1;
   return `blk_${Date.now()}_${uid}`;
+}
+
+function isSaturdayDate(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const d = new Date(`${dateStr}T00:00:00`);
+  return !Number.isNaN(d.getTime()) && d.getDay() === 6;
+}
+
+function isStaffPosition(position: string | undefined): boolean {
+  return (position ?? '').trim().toLowerCase() === 'staff';
 }
 
 export default function OvertimeForm({
@@ -132,28 +142,53 @@ export default function OvertimeForm({
             <div>
               <label className="label">Nama Orang yang Lembur</label>
               <div className="space-y-2">
-                {block.people.map((person, personIndex) => (
-                  <div key={personIndex} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <EmployeePicker
-                        value={person}
-                        onChange={(v) => updatePerson(block.id, personIndex, v)}
-                        employees={employees}
-                        disabled={disabled}
-                      />
+                {block.people.map((person, personIndex) => {
+                  const employee = employees.find((e) => e.nik === person.nik);
+                  const showPiket = isSaturdayDate(tanggalLembur) && isStaffPosition(employee?.position);
+                  return (
+                    <div key={personIndex}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <EmployeePicker
+                            value={person}
+                            onChange={(v) => updatePerson(block.id, personIndex, v)}
+                            employees={employees}
+                            disabled={disabled}
+                          />
+                        </div>
+                        {block.people.length > 1 && !disabled && (
+                          <button
+                            type="button"
+                            onClick={() => removePerson(block.id, personIndex)}
+                            className="btn-secondary btn-sm !px-2.5 shrink-0"
+                            aria-label="Hapus nama ini"
+                          >
+                            <X size={15} />
+                          </button>
+                        )}
+                      </div>
+                      {showPiket && (
+                        <label className="mt-1.5 flex items-center gap-2 rounded-xl bg-[color:var(--color-accent-tint)] px-3 py-2 text-[13px]">
+                          <input
+                            type="checkbox"
+                            disabled={disabled}
+                            checked={person.piket !== false}
+                            onChange={(e) =>
+                              updatePerson(block.id, personIndex, { ...person, piket: e.target.checked })
+                            }
+                            className="h-4 w-4 rounded border-black/20 text-[color:var(--color-accent)] focus:ring-[color:var(--color-accent)]"
+                          />
+                          <ShieldCheck size={14} className="text-[color:var(--color-accent)] shrink-0" />
+                          <span>
+                            {person.piket !== false
+                              ? 'Piket Sabtu (jam lembur standar: 1 jam × 1,5, sisanya × 2)'
+                              : 'Tidak piket (jam lembur dikali 2 seperti hari Minggu)'}
+                          </span>
+                        </label>
+                      )}
                     </div>
-                    {block.people.length > 1 && !disabled && (
-                      <button
-                        type="button"
-                        onClick={() => removePerson(block.id, personIndex)}
-                        className="btn-secondary btn-sm !px-2.5 shrink-0"
-                        aria-label="Hapus nama ini"
-                      >
-                        <X size={15} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {!disabled && (
                 <button

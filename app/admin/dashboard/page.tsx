@@ -19,6 +19,7 @@ type Row = {
   tanggal_lembur: string;
   jam_mulai: string;
   jam_selesai: string;
+  piket: number | null;
 };
 
 const STATUS_TABS = [
@@ -34,7 +35,7 @@ async function loadMonthMinutes(
 ): Promise<{ rows: Row[]; totalMinutes: number; totalGrossMinutes: number }> {
   const { start, end } = monthRange(month);
   const rows = await queryAll<Row>(
-    `SELECT nik, nama, tanggal_lembur, jam_mulai, jam_selesai FROM submissions
+    `SELECT nik, nama, tanggal_lembur, jam_mulai, jam_selesai, piket FROM submissions
      WHERE tanggal_lembur BETWEEN ? AND ? ${status !== 'all' ? 'AND status = ?' : ''}`,
     status !== 'all' ? [start, end, status] : [start, end]
   );
@@ -43,7 +44,7 @@ async function loadMonthMinutes(
   for (const r of rows) {
     const net = parseDurationMinutes(r.jam_mulai, r.jam_selesai);
     totalMinutes += net;
-    totalGrossMinutes += grossPayMinutes(net);
+    totalGrossMinutes += grossPayMinutes(net, r.tanggal_lembur, r.piket === null ? null : r.piket === 1);
   }
   return { rows, totalMinutes, totalGrossMinutes };
 }
@@ -117,7 +118,7 @@ export default async function AdminDashboardPage({
   for (const r of rows) {
     const key = r.nik ?? `nama:${r.nama.trim().toLowerCase()}`;
     const net = parseDurationMinutes(r.jam_mulai, r.jam_selesai);
-    const gross = grossPayMinutes(net);
+    const gross = grossPayMinutes(net, r.tanggal_lembur, r.piket === null ? null : r.piket === 1);
     const existing = peopleMinutes.get(key);
     peopleMinutes.set(key, {
       nama: r.nama,
@@ -227,7 +228,8 @@ export default async function AdminDashboardPage({
         </h2>
         <p className="text-xs sm:text-sm text-[color:var(--color-ink-secondary)] mb-4">
           Diurutkan dari yang paling banyak lembur bulan ini. Jam kotor = dasar
-          pembayaran gaji (1 jam pertama 1x, sisanya 1,5x).
+          pembayaran gaji (Senin–Sabtu: 1 jam × 1,5, sisanya × 2 — Minggu &amp; Sabtu
+          non-piket: semua jam × 2).
         </p>
         {ranking.length === 0 ? (
           <p className="text-sm text-[color:var(--color-ink-muted)] py-6 text-center">

@@ -104,6 +104,9 @@ async function bootstrap() {
   await ensureColumn('submissions', 'reviewed_by', 'INTEGER REFERENCES users(id)');
   await ensureColumn('submissions', 'reviewed_at', 'TEXT');
   await ensureColumn('submissions', 'review_note', 'TEXT');
+  // NULL = tidak berlaku (bukan Sabtu, atau bukan posisi Staff); 0/1 = eksplisit
+  // tidak piket / piket, hanya dikonsultasi oleh grossPayMinutes() untuk hari Sabtu.
+  await ensureColumn('submissions', 'piket', 'INTEGER');
 
   const adminCountResult = await client.execute(
     `SELECT COUNT(*) as c FROM users WHERE role = 'admin'`

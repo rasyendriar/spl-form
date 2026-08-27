@@ -3,7 +3,7 @@
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { queryOne, run, runBatch } from './db';
+import { queryAll, queryOne, run, runBatch } from './db';
 import { createSession, destroySession, getSession } from './session';
 import { getSettings, isFormOpen, updateSettings } from './settings';
 import { isValidHHMM } from './utils';
@@ -74,7 +74,7 @@ export async function changePasswordAction(formData: FormData) {
 
 // ---------- Submissions (field workers) ----------
 
-type SubmissionPerson = { nik: string | null; nama: string };
+type SubmissionPerson = { nik: string | null; nama: string; piket?: boolean | null };
 type SubmissionBlock = {
   people: SubmissionPerson[];
   pekerjaan: string;
@@ -110,6 +110,7 @@ export async function createSubmissionAction(formData: FormData) {
   const rowsToInsert: {
     nik: string | null;
     nama: string;
+    piket: boolean | null;
     pekerjaan: string;
     jamMulai: string;
     jamSelesai: string;
@@ -121,6 +122,7 @@ export async function createSubmissionAction(formData: FormData) {
           .map((p) => ({
             nik: p?.nik ? String(p.nik).trim() : null,
             nama: String(p?.nama ?? '').trim(),
+            piket: typeof p?.piket === 'boolean' ? p.piket : null,
           }))
           .filter((p) => p.nama)
       : [];
@@ -135,7 +137,14 @@ export async function createSubmissionAction(formData: FormData) {
     }
 
     for (const person of people) {
-      rowsToInsert.push({ nik: person.nik, nama: person.nama, pekerjaan, jamMulai, jamSelesai });
+      rowsToInsert.push({
+        nik: person.nik,
+        nama: person.nama,
+        piket: person.piket,
+        pekerjaan,
+        jamMulai,
+        jamSelesai,
+      });
     }
   }
 
@@ -143,20 +152,44 @@ export async function createSubmissionAction(formData: FormData) {
     redirect('/form?error=empty');
   }
 
+  // Piket is only meaningful on Saturday for Staff positions. If the client left
+  // the toggle at its default (checked) without the person interacting with it,
+  // `piket` arrives as null — resolve it against the authoritative employees
+  // table here so the stored value is always explicit (true) for that case,
+  // keeping the export's "Piket Sabtu" column and the pay math consistent.
+  const isSaturdayLembur = new Date(`${tanggal_lembur}T00:00:00`).getDay() === 6;
+  let staffNiks = new Set<string>();
+  if (isSaturdayLembur) {
+    const niks = [...new Set(rowsToInsert.map((r) => r.nik).filter((n): n is string => Boolean(n)))];
+    if (niks.length > 0) {
+      const placeholders = niks.map(() => '?').join(',');
+      const staffRows = await queryAll<{ nik: string }>(
+        `SELECT nik FROM employees WHERE nik IN (${placeholders}) AND LOWER(TRIM(position)) = 'staff'`,
+        niks
+      );
+      staffNiks = new Set(staffRows.map((r) => r.nik));
+    }
+  }
+
   await runBatch(
-    rowsToInsert.map((row) => ({
-      sql: `INSERT INTO submissions (user_id, nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        session!.id,
-        row.nik,
-        row.nama,
-        tanggal_lembur,
-        row.jamMulai,
-        row.jamSelesai,
-        row.pekerjaan,
-      ],
-    }))
+    rowsToInsert.map((row) => {
+      const effectivePiket =
+        row.piket === null && isSaturdayLembur && row.nik && staffNiks.has(row.nik) ? true : row.piket;
+      return {
+        sql: `INSERT INTO submissions (user_id, nik, nama, piket, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          session!.id,
+          row.nik,
+          row.nama,
+          effectivePiket === null ? null : effectivePiket ? 1 : 0,
+          tanggal_lembur,
+          row.jamMulai,
+          row.jamSelesai,
+          row.pekerjaan,
+        ],
+      };
+    })
   );
 
   revalidatePath('/form');
@@ -206,6 +239,8 @@ export async function updateSubmissionAction(formData: FormData) {
   const jam_mulai = String(formData.get('jam_mulai') ?? '').trim();
   const jam_selesai = String(formData.get('jam_selesai') ?? '').trim();
   const pekerjaan = String(formData.get('pekerjaan') ?? '').trim();
+  const piketRaw = String(formData.get('piket') ?? '');
+  const piket = piketRaw === 'ya' ? 1 : piketRaw === 'tidak' ? 0 : null;
 
   if (
     !id ||
@@ -219,9 +254,9 @@ export async function updateSubmissionAction(formData: FormData) {
   }
 
   await run(
-    `UPDATE submissions SET nik = ?, nama = ?, tanggal_lembur = ?, jam_mulai = ?, jam_selesai = ?, pekerjaan = ?
+    `UPDATE submissions SET nik = ?, nama = ?, tanggal_lembur = ?, jam_mulai = ?, jam_selesai = ?, pekerjaan = ?, piket = ?
      WHERE id = ?`,
-    [nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, id]
+    [nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, piket, id]
   );
 
   revalidatePath('/admin/submissions');

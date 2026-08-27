@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, UserCheck } from 'lucide-react';
 
 export type Employee = { nik: string; nama: string; section: string; position: string };
-export type PersonValue = { nik: string | null; nama: string };
+export type PersonValue = { nik: string | null; nama: string; piket?: boolean | null };
 
 export default function EmployeePicker({
   value,
@@ -58,7 +58,7 @@ export default function EmployeePicker({
           disabled={disabled}
           value={value.nama}
           onChange={(e) => {
-            onChange({ nik: null, nama: e.target.value });
+            onChange({ nik: null, nama: e.target.value, piket: value.piket });
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
@@ -75,7 +75,7 @@ export default function EmployeePicker({
               type="button"
               key={e.nik}
               onClick={() => {
-                onChange({ nik: e.nik, nama: e.nama });
+                onChange({ nik: e.nik, nama: e.nama, piket: value.piket });
                 setOpen(false);
               }}
               className="w-full text-left rounded-xl px-3 py-2 text-sm hover:bg-black/[0.04] flex items-center justify-between gap-2 transition-colors"

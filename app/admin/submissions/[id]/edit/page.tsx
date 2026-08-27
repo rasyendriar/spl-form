@@ -16,6 +16,7 @@ type Submission = {
   jam_mulai: string;
   jam_selesai: string;
   pekerjaan: string;
+  piket: number | null;
 };
 
 export default async function EditSubmissionPage({
@@ -29,7 +30,7 @@ export default async function EditSubmissionPage({
   const query = await searchParams;
 
   const submission = await queryOne<Submission>(
-    `SELECT id, nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan FROM submissions WHERE id = ?`,
+    `SELECT id, nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, piket FROM submissions WHERE id = ?`,
     [Number(id)]
   );
 
@@ -102,6 +103,25 @@ export default async function EditSubmissionPage({
               <label className="label">Jam Selesai</label>
               <TimeField name="jam_selesai" defaultValue={submission!.jam_selesai} required />
             </div>
+          </div>
+
+          <div>
+            <label className="label" htmlFor="piket">
+              Piket Sabtu (khusus posisi Staff)
+            </label>
+            <select
+              id="piket"
+              name="piket"
+              className="input"
+              defaultValue={submission!.piket === 1 ? 'ya' : submission!.piket === 0 ? 'tidak' : 'auto'}
+            >
+              <option value="auto">Tidak berlaku (bukan Sabtu / bukan Staff)</option>
+              <option value="ya">Piket (1 jam × 1,5, sisanya × 2)</option>
+              <option value="tidak">Tidak piket (semua jam × 2, seperti Minggu)</option>
+            </select>
+            <p className="text-xs text-[color:var(--color-ink-muted)] mt-1">
+              Hanya dikonsultasi sistem jika Tanggal Lembur di atas jatuh pada hari Sabtu.
+            </p>
           </div>
 
           <div>
