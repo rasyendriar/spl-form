@@ -4,8 +4,8 @@ import { todayInputValue } from '@/lib/utils';
 export default function ExportDailyPage() {
   return (
     <div className="max-w-lg space-y-6">
-      <div className="flex items-center gap-2">
-        <FileSpreadsheet size={22} className="text-[color:var(--color-accent)]" />
+      <div className="flex items-start gap-2">
+        <FileSpreadsheet size={22} className="text-[color:var(--color-accent)] mt-0.5 shrink-0" />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Export Format Harian</h1>
           <p className="text-sm text-[color:var(--color-ink-secondary)] mt-1">
@@ -50,8 +50,9 @@ export default function ExportDailyPage() {
 
       <p className="text-xs text-[color:var(--color-ink-muted)]">
         Kolom BARCODE terisi dari NIK karyawan (jika namanya dipilih dari database karyawan saat
-        mengisi form). Kolom POSISI, JAM ISTIRAHAT 1 &amp; 2 dikosongkan karena tidak dicatat di
-        aplikasi ini — bisa diisi manual di Excel bila perlu.
+        mengisi form). Kolom JAM ISTIRAHAT 1 &amp; 2 otomatis terisi 12.30–13.30 dan/atau
+        17.30–18.30 jika jam lembur melewati jam istirahat tersebut. Kolom POSISI dikosongkan
+        karena tidak dicatat di aplikasi ini — bisa diisi manual di Excel bila perlu.
       </p>
     </div>
   );

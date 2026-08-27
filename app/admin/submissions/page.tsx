@@ -70,10 +70,10 @@ const STATUS_TABS = [
 function ReviewActions({ row }: { row: Row }) {
   if (row.status === 'pending') {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         <form action={approveSubmissionAction}>
           <input type="hidden" name="id" value={row.id} />
-          <button type="submit" className="btn-primary text-xs bg-[color:var(--color-success)]">
+          <button type="submit" className="btn-primary btn-sm bg-[color:var(--color-success)]">
             <Check size={13} /> Setujui
           </button>
         </form>
@@ -83,9 +83,9 @@ function ReviewActions({ row }: { row: Row }) {
             type="text"
             name="note"
             placeholder="Alasan (opsional)"
-            className="input text-xs py-1.5 !min-h-0 w-32"
+            className="input input-sm w-24 sm:w-32"
           />
-          <button type="submit" className="btn-danger text-xs">
+          <button type="submit" className="btn-danger btn-sm">
             <X size={13} /> Tolak
           </button>
         </form>
@@ -95,7 +95,7 @@ function ReviewActions({ row }: { row: Row }) {
   return (
     <form action={resetSubmissionStatusAction}>
       <input type="hidden" name="id" value={row.id} />
-      <button type="submit" className="btn-secondary text-xs">
+      <button type="submit" className="btn-secondary btn-sm">
         <RotateCcw size={13} /> Set ke Menunggu
       </button>
     </form>
@@ -129,11 +129,11 @@ export default async function AdminSubmissionsPage({
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <a href={exportHref} className="btn-secondary">
-            <Download size={16} /> Rekap Excel
+          <a href={exportHref} className="btn-secondary btn-sm">
+            <Download size={14} /> Rekap Excel
           </a>
-          <Link href="/admin/submissions/export-daily" className="btn-primary">
-            <FileSpreadsheet size={16} /> Export Format Harian
+          <Link href="/admin/submissions/export-daily" className="btn-primary btn-sm">
+            <FileSpreadsheet size={14} /> Export Format Harian
           </Link>
         </div>
       </div>
@@ -148,7 +148,7 @@ export default async function AdminSubmissionsPage({
             <a
               key={tab.value}
               href={`/admin/submissions?${q.toString()}`}
-              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition ${
+              className={`whitespace-nowrap rounded-full px-3 sm:px-4 py-1.5 text-[13px] sm:text-sm font-medium transition ${
                 active
                   ? 'bg-white shadow-sm text-[color:var(--color-ink)]'
                   : 'text-[color:var(--color-ink-secondary)] hover:text-[color:var(--color-ink)]'
@@ -174,7 +174,7 @@ export default async function AdminSubmissionsPage({
           </label>
           <input id="to" name="to" type="date" defaultValue={to} className="input" />
         </div>
-        <button type="submit" className="btn-secondary">
+        <button type="submit" className="btn-secondary btn-sm">
           Filter
         </button>
         {(from || to) && (
@@ -210,12 +210,12 @@ export default async function AdminSubmissionsPage({
             <p className="text-xs text-[color:var(--color-ink-muted)]">Diisi oleh {r.submitted_by}</p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <ReviewActions row={r} />
-              <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary text-xs">
+              <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary btn-sm">
                 Edit
               </Link>
               <form action={deleteSubmissionAction}>
                 <input type="hidden" name="id" value={r.id} />
-                <ConfirmSubmitButton confirmMessage="Hapus pengajuan ini?" className="btn-danger text-xs">
+                <ConfirmSubmitButton confirmMessage="Hapus pengajuan ini?" className="btn-danger btn-sm">
                   Hapus
                 </ConfirmSubmitButton>
               </form>
@@ -271,14 +271,14 @@ export default async function AdminSubmissionsPage({
                   <div className="flex flex-col items-end gap-2">
                     <ReviewActions row={r} />
                     <div className="flex gap-2">
-                      <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary text-xs">
+                      <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary btn-sm">
                         Edit
                       </Link>
                       <form action={deleteSubmissionAction}>
                         <input type="hidden" name="id" value={r.id} />
                         <ConfirmSubmitButton
                           confirmMessage="Hapus pengajuan ini?"
-                          className="btn-danger text-xs"
+                          className="btn-danger btn-sm"
                         >
                           Hapus
                         </ConfirmSubmitButton>

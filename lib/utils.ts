@@ -1,10 +1,75 @@
-export function parseDurationMinutes(jamMulai: string, jamSelesai: string): number {
-  const [h1, m1] = jamMulai.split(':').map(Number);
-  const [h2, m2] = jamSelesai.split(':').map(Number);
-  const start = h1 * 60 + m1;
-  let end = h2 * 60 + m2;
+/**
+ * Jam istirahat tetap perusahaan — waktu yang tumpang tindih dengan jendela ini
+ * otomatis tidak dihitung sebagai jam lembur.
+ */
+export const BREAK_WINDOWS: { start: string; end: string; startMin: number; endMin: number }[] = [
+  { start: '12:30', end: '13:30', startMin: 12 * 60 + 30, endMin: 13 * 60 + 30 },
+  { start: '17:30', end: '18:30', startMin: 17 * 60 + 30, endMin: 18 * 60 + 30 },
+];
+
+function toMinutesOfDay(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function overlapMinutes(aStart: number, aEnd: number, bStart: number, bEnd: number): number {
+  return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+}
+
+/** Rentang jam kerja mentah (belum dikurangi istirahat), dalam menit. */
+export function rawSpanMinutes(jamMulai: string, jamSelesai: string): number {
+  const start = toMinutesOfDay(jamMulai);
+  let end = toMinutesOfDay(jamSelesai);
   if (end <= start) end += 24 * 60;
   return end - start;
+}
+
+/** Total menit istirahat (dari BREAK_WINDOWS) yang tumpang tindih dengan rentang lembur. */
+export function breakOverlapMinutes(jamMulai: string, jamSelesai: string): number {
+  const start = toMinutesOfDay(jamMulai);
+  let end = toMinutesOfDay(jamSelesai);
+  if (end <= start) end += 24 * 60;
+
+  let total = 0;
+  for (const w of BREAK_WINDOWS) {
+    // cek jendela istirahat hari ini, dan versi +24 jam untuk lembur yang lewat tengah malam
+    total += overlapMinutes(start, end, w.startMin, w.endMin);
+    total += overlapMinutes(start, end, w.startMin + 24 * 60, w.endMin + 24 * 60);
+  }
+  return total;
+}
+
+/** Jendela istirahat mana saja (dari BREAK_WINDOWS) yang benar-benar tumpang tindih dengan rentang lembur ini. */
+export function overlappingBreakWindows(
+  jamMulai: string,
+  jamSelesai: string
+): { start: string; end: string }[] {
+  const start = toMinutesOfDay(jamMulai);
+  let end = toMinutesOfDay(jamSelesai);
+  if (end <= start) end += 24 * 60;
+
+  return BREAK_WINDOWS.filter(
+    (w) =>
+      overlapMinutes(start, end, w.startMin, w.endMin) > 0 ||
+      overlapMinutes(start, end, w.startMin + 24 * 60, w.endMin + 24 * 60) > 0
+  );
+}
+
+/** Durasi lembur bersih (menit) — jam mentah dikurangi jam istirahat yang tumpang tindih. */
+export function parseDurationMinutes(jamMulai: string, jamSelesai: string): number {
+  const raw = rawSpanMinutes(jamMulai, jamSelesai);
+  const breakMinutes = breakOverlapMinutes(jamMulai, jamSelesai);
+  return Math.max(0, raw - breakMinutes);
+}
+
+/**
+ * Jam kotor (dasar pembayaran gaji): 30 menit pertama dihitung 1x, sisanya 1,5x.
+ * Input & output dalam menit (output sudah dikali pengali, jadi bisa > durasi bersih).
+ */
+export function grossPayMinutes(netMinutes: number): number {
+  const firstPortion = Math.min(netMinutes, 30);
+  const remaining = Math.max(netMinutes - 30, 0);
+  return firstPortion * 1 + remaining * 1.5;
 }
 
 export function formatDuration(jamMulai: string, jamSelesai: string): string {

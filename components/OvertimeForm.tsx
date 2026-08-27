@@ -111,9 +111,9 @@ export default function OvertimeForm({
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {blocks.map((block, blockIndex) => (
-          <div key={block.id} className="card p-5 space-y-4 animate-fade-in-up">
+          <div key={block.id} className="card p-4 sm:p-5 space-y-3 sm:space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[color:var(--color-ink-secondary)]">
                 Pekerjaan #{blockIndex + 1}
@@ -133,7 +133,7 @@ export default function OvertimeForm({
               <label className="label">Nama Orang yang Lembur</label>
               <div className="space-y-2">
                 {block.people.map((person, personIndex) => (
-                  <div key={personIndex} className="flex gap-2">
+                  <div key={personIndex} className="flex items-center gap-2">
                     <div className="flex-1">
                       <EmployeePicker
                         value={person}
@@ -146,10 +146,10 @@ export default function OvertimeForm({
                       <button
                         type="button"
                         onClick={() => removePerson(block.id, personIndex)}
-                        className="btn-secondary px-3 shrink-0 h-fit"
+                        className="btn-secondary btn-sm !px-2.5 shrink-0"
                         aria-label="Hapus nama ini"
                       >
-                        <X size={16} />
+                        <X size={15} />
                       </button>
                     )}
                   </div>
@@ -159,9 +159,9 @@ export default function OvertimeForm({
                 <button
                   type="button"
                   onClick={() => addPerson(block.id)}
-                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[color:var(--color-accent)] hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 text-[13px] sm:text-sm font-medium text-[color:var(--color-accent)] hover:underline"
                 >
-                  <UserPlus size={15} /> Tambah Orang
+                  <UserPlus size={14} /> Tambah Orang
                 </button>
               )}
               <p className="text-xs text-[color:var(--color-ink-muted)] mt-1">
@@ -182,7 +182,7 @@ export default function OvertimeForm({
               />
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Jam Mulai</label>
                 <TimeSelect
@@ -202,13 +202,19 @@ export default function OvertimeForm({
                 />
               </div>
             </div>
+            {block.jamMulai && block.jamSelesai && (
+              <p className="text-xs text-[color:var(--color-ink-muted)] -mt-2">
+                Jam istirahat (12:30–13:30 &amp; 17:30–18:30) otomatis tidak dihitung sebagai
+                lembur.
+              </p>
+            )}
           </div>
         ))}
       </div>
 
       {!disabled && (
-        <button type="button" onClick={addBlock} className="btn-secondary w-full">
-          <Plus size={16} /> Tambah Pekerjaan Lain (nama &amp; jam berbeda)
+        <button type="button" onClick={addBlock} className="btn-secondary btn-sm w-full">
+          <Plus size={15} /> Tambah Pekerjaan Lain (nama &amp; jam berbeda)
         </button>
       )}
 

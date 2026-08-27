@@ -67,7 +67,7 @@ export default async function AdminEmployeesPage({
       {ok && <p className="alert-success">{ok}</p>}
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Plus size={16} /> Tambah Karyawan
           </h2>
@@ -110,7 +110,7 @@ export default async function AdminEmployeesPage({
           </form>
         </div>
 
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h2 className="font-semibold mb-2 flex items-center gap-2">
             <Upload size={16} /> Impor Cepat (Paste dari Excel)
           </h2>
@@ -171,14 +171,14 @@ export default async function AdminEmployeesPage({
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Link href={`/admin/employees/${e.id}/edit`} className="btn-secondary text-xs px-3">
+                <Link href={`/admin/employees/${e.id}/edit`} className="btn-secondary btn-sm">
                   <Pencil size={13} />
                 </Link>
                 <form action={deleteEmployeeAction}>
                   <input type="hidden" name="id" value={e.id} />
                   <ConfirmSubmitButton
                     confirmMessage={`Hapus karyawan "${e.nama}"?`}
-                    className="btn-danger text-xs px-3"
+                    className="btn-danger btn-sm"
                   >
                     Hapus
                   </ConfirmSubmitButton>
@@ -218,14 +218,14 @@ export default async function AdminEmployeesPage({
                 <td className="px-4 py-3 text-[color:var(--color-ink-secondary)]">{e.position}</td>
                 <td className="px-4 py-3 text-[color:var(--color-ink-secondary)]">{e.grup}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <Link href={`/admin/employees/${e.id}/edit`} className="btn-secondary text-xs mr-2">
+                  <Link href={`/admin/employees/${e.id}/edit`} className="btn-secondary btn-sm mr-2">
                     Edit
                   </Link>
                   <form action={deleteEmployeeAction} className="inline">
                     <input type="hidden" name="id" value={e.id} />
                     <ConfirmSubmitButton
                       confirmMessage={`Hapus karyawan "${e.nama}"?`}
-                      className="btn-danger text-xs"
+                      className="btn-danger btn-sm"
                     >
                       Hapus
                     </ConfirmSubmitButton>

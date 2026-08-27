@@ -48,7 +48,7 @@ export default async function EditSubmissionPage({
 
       {error && <p className="alert-error">{error}</p>}
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <form action={updateSubmissionAction} className="space-y-4">
           <input type="hidden" name="id" value={submission!.id} />
 

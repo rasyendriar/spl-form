@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { queryAll } from '@/lib/db';
 import { getSession } from '@/lib/session';
+import { overlappingBreakWindows } from '@/lib/utils';
 
 type Row = {
   nik: string | null;
@@ -61,19 +62,24 @@ export async function GET(request: NextRequest) {
   ];
   const header2 = ['', '', '', '', 'AWAL', 'AKHIR', 'AWAL', 'AKHIR', 'AWAL', 'AKHIR', ''];
 
-  const dataRows = rows.map((r) => [
-    r.nik ?? '',
-    r.nama,
-    toDDMMYYYY(r.tanggal_lembur),
-    '',
-    toDotTime(r.jam_mulai),
-    toDotTime(r.jam_selesai),
-    '',
-    '',
-    '',
-    '',
-    r.pekerjaan,
-  ]);
+  const dataRows = rows.map((r) => {
+    const breaks = overlappingBreakWindows(r.jam_mulai, r.jam_selesai);
+    const ist1 = breaks[0];
+    const ist2 = breaks[1];
+    return [
+      r.nik ?? '',
+      r.nama,
+      toDDMMYYYY(r.tanggal_lembur),
+      '',
+      toDotTime(r.jam_mulai),
+      toDotTime(r.jam_selesai),
+      ist1 ? toDotTime(ist1.start) : '',
+      ist1 ? toDotTime(ist1.end) : '',
+      ist2 ? toDotTime(ist2.start) : '',
+      ist2 ? toDotTime(ist2.end) : '',
+      r.pekerjaan,
+    ];
+  });
 
   const aoa = [header1, header2, ...dataRows];
   const worksheet = XLSX.utils.aoa_to_sheet(aoa);

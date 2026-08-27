@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { queryAll } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { formatDuration } from '@/lib/utils';
+import { formatDuration, grossPayMinutes, parseDurationMinutes } from '@/lib/utils';
 
 type Row = {
   nik: string | null;
@@ -58,18 +58,23 @@ export async function GET(request: NextRequest) {
 
   const rows = await queryAll<Row>(sql, params);
 
-  const data = rows.map((r) => ({
-    NIK: r.nik ?? '',
-    Tanggal: r.tanggal_lembur,
-    Nama: r.nama,
-    'Jam Mulai': r.jam_mulai,
-    'Jam Selesai': r.jam_selesai,
-    Durasi: formatDuration(r.jam_mulai, r.jam_selesai),
-    Pekerjaan: r.pekerjaan,
-    Status: STATUS_LABEL[r.status] ?? r.status,
-    'Akun Pengisi': r.submitted_by,
-    'Waktu Pengajuan': r.created_at,
-  }));
+  const data = rows.map((r) => {
+    const netMinutes = parseDurationMinutes(r.jam_mulai, r.jam_selesai);
+    return {
+      NIK: r.nik ?? '',
+      Tanggal: r.tanggal_lembur,
+      Nama: r.nama,
+      'Jam Mulai': r.jam_mulai,
+      'Jam Selesai': r.jam_selesai,
+      'Durasi Bersih': formatDuration(r.jam_mulai, r.jam_selesai),
+      'Jam Bersih (angka)': Math.round((netMinutes / 60) * 100) / 100,
+      'Jam Kotor / Gaji (angka)': Math.round((grossPayMinutes(netMinutes) / 60) * 100) / 100,
+      Pekerjaan: r.pekerjaan,
+      Status: STATUS_LABEL[r.status] ?? r.status,
+      'Akun Pengisi': r.submitted_by,
+      'Waktu Pengajuan': r.created_at,
+    };
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(data);
   worksheet['!cols'] = [
@@ -78,7 +83,9 @@ export async function GET(request: NextRequest) {
     { wch: 24 },
     { wch: 10 },
     { wch: 10 },
+    { wch: 13 },
     { wch: 14 },
+    { wch: 16 },
     { wch: 40 },
     { wch: 12 },
     { wch: 20 },

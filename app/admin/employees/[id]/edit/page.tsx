@@ -47,7 +47,7 @@ export default async function EditEmployeePage({
 
       {error && <p className="alert-error">{error}</p>}
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <form action={updateEmployeeAction} className="space-y-4">
           <input type="hidden" name="id" value={employee!.id} />
 

@@ -36,7 +36,7 @@ export default async function AccountPage({
       <Header user={session!} nav={nav} />
       <main className="mx-auto max-w-sm px-4 py-8">
         <h1 className="text-2xl font-semibold tracking-tight mb-4">Ganti Password</h1>
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <form action={changePasswordAction} className="space-y-4">
             {error && <p className="alert-error">{error}</p>}
             {params.ok && <p className="alert-success">Password berhasil diubah.</p>}

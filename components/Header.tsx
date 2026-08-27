@@ -37,7 +37,7 @@ export default function Header({
 }) {
   return (
     <header className="glass-header">
-      <div className="mx-auto max-w-6xl px-4 py-3.5 flex items-center justify-between gap-4">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
         <div>
           <Link href="/" className="text-[17px] font-semibold tracking-tight text-[color:var(--color-ink)]">
             Form SPL
@@ -77,12 +77,12 @@ export default function Header({
               </p>
             </div>
           </div>
-          <Link href="/account" className="btn-secondary text-xs px-3">
+          <Link href="/account" className="btn-secondary btn-sm !px-2.5 sm:!px-3.5">
             <UserIcon size={14} />
             <span className="hidden sm:inline">Akun</span>
           </Link>
           <form action={logoutAction}>
-            <button type="submit" className="btn-secondary text-xs px-3">
+            <button type="submit" className="btn-secondary btn-sm !px-2.5 sm:!px-3.5">
               <LogOut size={14} />
               <span className="hidden sm:inline">Keluar</span>
             </button>
@@ -91,16 +91,16 @@ export default function Header({
       </div>
 
       {nav && nav.length > 0 && (
-        <nav className="flex md:hidden gap-1 px-4 pb-3 overflow-x-auto">
+        <nav className="flex md:hidden gap-1 px-3 pb-2.5 overflow-x-auto">
           {nav.map((item) => {
             const Icon = NAV_ICONS[item.label];
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-medium bg-black/[0.04] text-[color:var(--color-ink-secondary)] hover:bg-black/[0.08]"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium bg-black/[0.04] text-[color:var(--color-ink-secondary)] hover:bg-black/[0.08]"
               >
-                {Icon && <Icon size={13} />}
+                {Icon && <Icon size={12} />}
                 {item.label}
               </Link>
             );

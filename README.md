@@ -14,8 +14,13 @@ mengekspor rekap data.
   - **Pilih nama dari database karyawan** (ketik untuk mencari, tinggal
     klik) — atau tetap bisa ketik bebas untuk orang yang belum terdaftar.
   - **Jam mulai & jam selesai bebas ditentukan sendiri** oleh yang lembur
-    (tidak ada standarisasi jam), memakai pemilih jam 24 jam (`23:20`, bukan
-    format AM/PM).
+    (tidak ada standarisasi jam), memakai satu pemilih jam 24 jam sekali
+    pilih (`23:20`, bukan format AM/PM, dan tidak perlu pilih jam & menit
+    terpisah).
+  - **Jam istirahat otomatis dikeluarkan dari hitungan lembur**: 12:30–13:30
+    (istirahat siang) dan 17:30–18:30 (istirahat sore) — kalau jam lemburmu
+    melewati salah satu (atau keduanya), durasi yang tercatat sudah bersih
+    tanpa jam istirahat itu.
   - Bisa mengisi **beberapa orang sekaligus untuk pekerjaan yang sama** (klik
     "Tambah Orang"), dan **beberapa pekerjaan berbeda dalam satu kali
     submit** (klik "Tambah Pekerjaan Lain") — cocok untuk foreman yang
@@ -25,14 +30,16 @@ mengekspor rekap data.
 - **Riwayat pengajuan** milik user sendiri; bisa dihapus selama masih
   berstatus "Menunggu" (yang sudah diproses admin terkunci dari user).
 - **Panel admin:**
-  - **Dashboard**: kartu ringkasan (total jam lembur, total pengajuan, jumlah
-    orang aktif, rata-rata jam/orang) beserta perbandingan ke bulan lalu,
-    ranking jam lembur per orang, dan tren harian — bisa difilter per status
+  - **Dashboard**: kartu ringkasan (total jam lembur bersih, **jam kotor
+    sebagai dasar gaji**, total pengajuan, jumlah orang aktif, rata-rata
+    jam/orang) beserta perbandingan ke bulan lalu, ranking jam lembur per
+    orang (bersih & kotor), dan tren harian — bisa difilter per status
     (default: yang sudah **Disetujui** saja).
   - **Pengajuan**: rekap semua pengajuan lembur (filter tanggal & status),
     **approve/reject** dengan alasan penolakan opsional, **edit** data lembur
-    secara manual, ekspor rekap ke Excel, dan **export format harian**
-    yang mengikuti format kolom & sel gabungan (merge) template internal.
+    secara manual, ekspor rekap ke Excel (termasuk kolom jam bersih & jam
+    kotor), dan **export format harian** yang mengikuti format kolom & sel
+    gabungan (merge) template internal (termasuk jam istirahat otomatis).
   - **Kelola Karyawan**: database karyawan (NIK, nama, section, posisi,
     grup) yang dipakai sebagai sumber dropdown nama di form — tambah satu
     per satu, edit, hapus, atau impor massal dengan cara tempel dari Excel.
@@ -45,6 +52,27 @@ mengekspor rekap data.
 - Tampilan bergaya kartu, terinspirasi Apple, dengan header kaca (frosted
   glass), ikon, animasi halus, dan dioptimalkan untuk HP (mobile-friendly)
   — mengisi form maupun mengatur pengaturan bisa nyaman lewat smartphone.
+
+## Aturan Perhitungan Jam Lembur
+
+Dua aturan bisnis berikut dihitung otomatis oleh sistem (kode di
+`lib/utils.ts`, fungsi `parseDurationMinutes` dan `grossPayMinutes`):
+
+1. **Jam istirahat tidak dihitung lembur.** Ada dua jendela istirahat tetap:
+   **12:30–13:30** dan **17:30–18:30**. Jika rentang jam mulai–selesai yang
+   diisi user melewati salah satu (atau kedua) jendela ini, waktu yang
+   tumpang tindih otomatis dikurangi dari durasi lembur. Contoh: lembur
+   17:00–20:00 (3 jam) memotong 1 jam istirahat sore → tercatat 2 jam bersih.
+2. **Jam kotor (dasar pembayaran gaji)**: 30 menit pertama dari durasi
+   bersih dihitung 1x, sisanya dihitung 1,5x. Contoh: 3 jam bersih → 30
+   menit pertama (0,5 jam × 1) + 2,5 jam sisanya (× 1,5) = **4,25 jam
+   kotor**. Nilai ini yang ditampilkan di Dashboard dan kolom export sebagai
+   dasar perhitungan gaji lembur.
+
+Kalau jam istirahat atau rumus pengali ini berubah di kemudian hari, cukup
+ubah `BREAK_WINDOWS` dan `grossPayMinutes()` di `lib/utils.ts` — semua
+tempat yang menampilkan durasi (form, dashboard, export) otomatis ikut
+menyesuaikan karena semuanya memanggil fungsi yang sama.
 
 ## Teknologi
 
@@ -191,6 +219,7 @@ Struktur folder penting:
 | `app/admin/settings/page.tsx` | Pengaturan cut off harian |
 | `lib/actions.ts` | Semua logika submit form (Server Actions) |
 | `lib/settings.ts` | Aturan cut off harian (Senin–Jumat/Sabtu/Minggu) |
+| `lib/utils.ts` | Jam istirahat & rumus jam kotor (`BREAK_WINDOWS`, `grossPayMinutes`) |
 | `lib/db.ts` | Skema database, migrasi kolom, & koneksi Turso |
 | `lib/employee-seed.ts` | Data awal 30 karyawan (hanya dipakai sekali saat database masih kosong) |
 | `app/globals.css` + `tailwind.config.ts` | Warna, gaya kartu, tombol, animasi, dsb. |

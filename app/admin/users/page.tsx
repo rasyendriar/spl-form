@@ -138,9 +138,9 @@ export default async function AdminUsersPage({
                 placeholder="Password baru"
                 minLength={6}
                 required
-                className="input text-xs py-1.5"
+                className="input input-sm"
               />
-              <button type="submit" className="btn-secondary text-xs whitespace-nowrap">
+              <button type="submit" className="btn-secondary btn-sm whitespace-nowrap">
                 Reset
               </button>
             </form>
@@ -148,7 +148,7 @@ export default async function AdminUsersPage({
               <input type="hidden" name="id" value={u.id} />
               <ConfirmSubmitButton
                 confirmMessage={`Hapus user "${u.full_name}"?`}
-                className="btn-danger text-xs w-full"
+                className="btn-danger btn-sm w-full"
               >
                 Hapus User
               </ConfirmSubmitButton>
@@ -190,9 +190,9 @@ export default async function AdminUsersPage({
                       placeholder="Password baru"
                       minLength={6}
                       required
-                      className="input text-xs py-1.5"
+                      className="input input-sm"
                     />
-                    <button type="submit" className="btn-secondary text-xs whitespace-nowrap">
+                    <button type="submit" className="btn-secondary btn-sm whitespace-nowrap">
                       Reset
                     </button>
                   </form>
@@ -202,7 +202,7 @@ export default async function AdminUsersPage({
                     <input type="hidden" name="id" value={u.id} />
                     <ConfirmSubmitButton
                       confirmMessage={`Hapus user "${u.full_name}"?`}
-                      className="btn-danger text-xs"
+                      className="btn-danger btn-sm"
                     >
                       Hapus
                     </ConfirmSubmitButton>

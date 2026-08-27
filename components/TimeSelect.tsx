@@ -1,12 +1,20 @@
 'use client';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+const STEP_MINUTES = 5;
+
+const OPTIONS = Array.from({ length: (24 * 60) / STEP_MINUTES }, (_, i) => {
+  const totalMinutes = i * STEP_MINUTES;
+  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const m = String(totalMinutes % 60).padStart(2, '0');
+  return `${h}:${m}`;
+});
 
 /**
- * Always renders as 24-hour HH:MM, regardless of browser/OS locale — unlike the
- * native <input type="time">, whose displayed format (12h vs 24h) follows the
- * viewer's locale and can't be forced via HTML/CSS alone.
+ * Single dropdown covering the whole day in 5-minute steps — one tap on
+ * mobile picks hour+minute together, instead of two separate hour/minute
+ * selects. Always renders as 24-hour HH:MM regardless of browser/OS locale,
+ * unlike the native <input type="time"> whose displayed format (12h vs 24h)
+ * follows the viewer's locale and can't be forced via HTML/CSS alone.
  */
 export default function TimeSelect({
   name,
@@ -23,49 +31,21 @@ export default function TimeSelect({
   disabled?: boolean;
   className?: string;
 }) {
-  const [h, m] = value ? value.split(':') : ['', ''];
-
-  function set(nextH: string, nextM: string) {
-    if (nextH === '' || nextM === '') {
-      onChange('');
-      return;
-    }
-    onChange(`${nextH}:${nextM}`);
-  }
-
   return (
-    <div className={`flex items-center gap-1.5 ${className ?? ''}`}>
+    <div className={className}>
       {name && <input type="hidden" name={name} value={value} />}
       <select
         aria-label="Jam"
         required={required}
         disabled={disabled}
-        value={h}
-        onChange={(e) => set(e.target.value, m || '00')}
-        className="input !w-auto px-3 tabular-nums"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="input tabular-nums"
       >
         <option value="" disabled>
-          --
+          -- : --
         </option>
-        {HOURS.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-      <span className="text-[color:var(--color-ink-muted)] font-medium">:</span>
-      <select
-        aria-label="Menit"
-        required={required}
-        disabled={disabled}
-        value={m}
-        onChange={(e) => set(h || '00', e.target.value)}
-        className="input !w-auto px-3 tabular-nums"
-      >
-        <option value="" disabled>
-          --
-        </option>
-        {MINUTES.map((opt) => (
+        {OPTIONS.map((opt) => (
           <option key={opt} value={opt}>
             {opt}
           </option>
