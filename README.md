@@ -63,11 +63,11 @@ Dua aturan bisnis berikut dihitung otomatis oleh sistem (kode di
    diisi user melewati salah satu (atau kedua) jendela ini, waktu yang
    tumpang tindih otomatis dikurangi dari durasi lembur. Contoh: lembur
    17:00–20:00 (3 jam) memotong 1 jam istirahat sore → tercatat 2 jam bersih.
-2. **Jam kotor (dasar pembayaran gaji)**: 30 menit pertama dari durasi
-   bersih dihitung 1x, sisanya dihitung 1,5x. Contoh: 3 jam bersih → 30
-   menit pertama (0,5 jam × 1) + 2,5 jam sisanya (× 1,5) = **4,25 jam
-   kotor**. Nilai ini yang ditampilkan di Dashboard dan kolom export sebagai
-   dasar perhitungan gaji lembur.
+2. **Jam kotor (dasar pembayaran gaji)**: 1 jam pertama dari durasi bersih
+   dihitung 1x, sisanya dihitung 1,5x. Contoh: 3 jam bersih → 1 jam pertama
+   (× 1) + 2 jam sisanya (× 1,5) = 1 + 3 = **4 jam kotor**. Nilai ini yang
+   ditampilkan di Dashboard dan kolom export sebagai dasar perhitungan gaji
+   lembur.
 
 Kalau jam istirahat atau rumus pengali ini berubah di kemudian hari, cukup
 ubah `BREAK_WINDOWS` dan `grossPayMinutes()` di `lib/utils.ts` — semua

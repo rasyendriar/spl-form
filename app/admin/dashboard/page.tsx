@@ -227,7 +227,7 @@ export default async function AdminDashboardPage({
         </h2>
         <p className="text-xs sm:text-sm text-[color:var(--color-ink-secondary)] mb-4">
           Diurutkan dari yang paling banyak lembur bulan ini. Jam kotor = dasar
-          pembayaran gaji (30 menit pertama 1x, sisanya 1,5x).
+          pembayaran gaji (1 jam pertama 1x, sisanya 1,5x).
         </p>
         {ranking.length === 0 ? (
           <p className="text-sm text-[color:var(--color-ink-muted)] py-6 text-center">

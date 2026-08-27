@@ -63,12 +63,12 @@ export function parseDurationMinutes(jamMulai: string, jamSelesai: string): numb
 }
 
 /**
- * Jam kotor (dasar pembayaran gaji): 30 menit pertama dihitung 1x, sisanya 1,5x.
+ * Jam kotor (dasar pembayaran gaji): 1 jam pertama dihitung 1x, sisanya 1,5x.
  * Input & output dalam menit (output sudah dikali pengali, jadi bisa > durasi bersih).
  */
 export function grossPayMinutes(netMinutes: number): number {
-  const firstPortion = Math.min(netMinutes, 30);
-  const remaining = Math.max(netMinutes - 30, 0);
+  const firstPortion = Math.min(netMinutes, 60);
+  const remaining = Math.max(netMinutes - 60, 0);
   return firstPortion * 1 + remaining * 1.5;
 }
 
