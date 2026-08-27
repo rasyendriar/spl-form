@@ -5,13 +5,21 @@ import { getSession } from '@/lib/session';
 import { formatDuration } from '@/lib/utils';
 
 type Row = {
+  nik: string | null;
   tanggal_lembur: string;
   nama: string;
   jam_mulai: string;
   jam_selesai: string;
   pekerjaan: string;
+  status: string;
   submitted_by: string;
   created_at: string;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Menunggu',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
 };
 
 export async function GET(request: NextRequest) {
@@ -23,9 +31,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const from = searchParams.get('from') || '';
   const to = searchParams.get('to') || '';
+  const status = searchParams.get('status') || '';
 
   let sql = `
-    SELECT s.tanggal_lembur, s.nama, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.created_at,
+    SELECT s.nik, s.tanggal_lembur, s.nama, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.status, s.created_at,
            u.full_name as submitted_by
     FROM submissions s
     JOIN users u ON u.id = s.user_id
@@ -40,30 +49,38 @@ export async function GET(request: NextRequest) {
     conditions.push('s.tanggal_lembur <= ?');
     params.push(to);
   }
+  if (status && status !== 'all') {
+    conditions.push('s.status = ?');
+    params.push(status);
+  }
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
   sql += ' ORDER BY s.tanggal_lembur ASC, s.id ASC';
 
   const rows = await queryAll<Row>(sql, params);
 
   const data = rows.map((r) => ({
+    NIK: r.nik ?? '',
     Tanggal: r.tanggal_lembur,
     Nama: r.nama,
     'Jam Mulai': r.jam_mulai,
     'Jam Selesai': r.jam_selesai,
-    'Durasi': formatDuration(r.jam_mulai, r.jam_selesai),
+    Durasi: formatDuration(r.jam_mulai, r.jam_selesai),
     Pekerjaan: r.pekerjaan,
+    Status: STATUS_LABEL[r.status] ?? r.status,
     'Akun Pengisi': r.submitted_by,
     'Waktu Pengajuan': r.created_at,
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(data);
   worksheet['!cols'] = [
+    { wch: 14 },
     { wch: 12 },
     { wch: 24 },
     { wch: 10 },
     { wch: 10 },
     { wch: 14 },
     { wch: 40 },
+    { wch: 12 },
     { wch: 20 },
     { wch: 20 },
   ];

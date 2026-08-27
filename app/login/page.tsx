@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Clock3 } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { loginAction } from '@/lib/actions';
 
@@ -20,8 +21,11 @@ export default async function LoginPage({
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm animate-fade-in-up">
         <div className="text-center mb-6">
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-[color:var(--color-accent)] flex items-center justify-center mb-4 shadow-sm">
+            <Clock3 size={26} className="text-white" />
+          </div>
           <h1 className="text-3xl font-semibold tracking-tight text-[color:var(--color-ink)]">
             Form SPL
           </h1>

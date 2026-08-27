@@ -9,32 +9,42 @@ mengekspor rekap data.
 - **Login user & admin.** Setiap orang login dengan username/password yang
   dibuatkan oleh admin (tanpa registrasi mandiri).
 - **Form pengajuan lembur** (untuk user lapangan):
-  - Tanggal lembur bebas dipilih (bisa hari lain untuk rencana ke depan).
-  - **Jam mulai otomatis** sesuai jam standar yang diatur admin (beda untuk
-    hari biasa vs Sabtu) — user hanya perlu mengisi **jam selesai**.
+  - Tanggal lembur bebas dipilih (bisa hari lain untuk rencana ke depan —
+    termasuk lembur hari Minggu yang diajukan dari hari Sabtu).
+  - **Pilih nama dari database karyawan** (ketik untuk mencari, tinggal
+    klik) — atau tetap bisa ketik bebas untuk orang yang belum terdaftar.
+  - **Jam mulai & jam selesai bebas ditentukan sendiri** oleh yang lembur
+    (tidak ada standarisasi jam), memakai pemilih jam 24 jam (`23:20`, bukan
+    format AM/PM).
   - Bisa mengisi **beberapa orang sekaligus untuk pekerjaan yang sama** (klik
-    "+ Tambah Orang"), dan **beberapa pekerjaan berbeda dalam satu kali
-    submit** (klik "+ Tambah Pekerjaan Lain") — cocok untuk foreman yang
+    "Tambah Orang"), dan **beberapa pekerjaan berbeda dalam satu kali
+    submit** (klik "Tambah Pekerjaan Lain") — cocok untuk foreman yang
     input lembur satu tim sekaligus.
-  - Nama saat ini masih isian teks bebas — lihat bagian "Rencana
-    pengembangan" di bawah untuk rencana dropdown Nama/NIK.
-- **Riwayat pengajuan** milik user sendiri, dengan opsi hapus.
+  - Status pengajuan (Menunggu/Disetujui/Ditolak) langsung terlihat di
+    riwayat, termasuk alasan bila ditolak.
+- **Riwayat pengajuan** milik user sendiri; bisa dihapus selama masih
+  berstatus "Menunggu" (yang sudah diproses admin terkunci dari user).
 - **Panel admin:**
   - **Dashboard**: kartu ringkasan (total jam lembur, total pengajuan, jumlah
     orang aktif, rata-rata jam/orang) beserta perbandingan ke bulan lalu,
-    ranking jam lembur per orang, dan tren harian — untuk memantau siapa
-    lembur berapa lama setiap bulan.
-  - **Pengajuan**: rekap semua pengajuan lembur (bisa difilter berdasarkan
-    rentang tanggal), **edit** data lembur secara manual, dan ekspor ke file
-    Excel (`.xlsx`).
+    ranking jam lembur per orang, dan tren harian — bisa difilter per status
+    (default: yang sudah **Disetujui** saja).
+  - **Pengajuan**: rekap semua pengajuan lembur (filter tanggal & status),
+    **approve/reject** dengan alasan penolakan opsional, **edit** data lembur
+    secara manual, ekspor rekap ke Excel, dan **export format harian**
+    yang mengikuti format kolom & sel gabungan (merge) template internal.
+  - **Kelola Karyawan**: database karyawan (NIK, nama, section, posisi,
+    grup) yang dipakai sebagai sumber dropdown nama di form — tambah satu
+    per satu, edit, hapus, atau impor massal dengan cara tempel dari Excel.
   - **Kelola User**: admin membuat username & password untuk user lapangan
     (atau admin lain), reset password, dan menghapus user.
-  - **Pengaturan**: jam mulai lembur standar + batas waktu (cut off)
-    pengisian, masing-masing terpisah untuk **hari biasa** dan **Sabtu**,
-    plus tombol darurat untuk menutup form secara manual kapan pun.
+  - **Pengaturan**: batas waktu (cut off) pengisian harian, terpisah untuk
+    **Senin–Jumat**, **Sabtu**, dan **Minggu**, plus tombol darurat untuk
+    menutup form secara manual kapan pun.
 - **Ganti password** mandiri untuk setiap user yang sudah login.
 - Tampilan bergaya kartu, terinspirasi Apple, dengan header kaca (frosted
-  glass) dan aksen biru.
+  glass), ikon, animasi halus, dan dioptimalkan untuk HP (mobile-friendly)
+  — mengisi form maupun mengatur pengaturan bisa nyaman lewat smartphone.
 
 ## Teknologi
 
@@ -129,18 +139,24 @@ otomatis build & deploy ulang secara otomatis — tidak perlu langkah manual.
 
 ## Alur Penggunaan
 
-1. Admin login, lalu ke menu **Kelola User** untuk membuat akun bagi setiap
-   petugas lapangan (username + password), lalu membagikan kredensial
-   tersebut ke masing-masing orang.
-2. Admin ke menu **Pengaturan** untuk mengatur jam mulai lembur standar dan
-   batas waktu (cut off) pengisian — masing-masing untuk hari biasa dan
-   Sabtu — lalu pastikan toggle "Aktifkan form" menyala.
-3. Petugas lapangan (atau foreman) login, lalu mengisi form lembur di
-   halaman **Form Lembur**: pilih tanggal, isi satu atau beberapa nama per
-   pekerjaan, dan jam selesai (jam mulai otomatis terisi).
-4. Admin memantau ringkasan jam lembur per orang per bulan di menu
-   **Dashboard**, melihat/mengedit data mentah di menu **Pengajuan**, dan
-   mengekspor ke Excel untuk keperluan rekap/payroll.
+1. Admin login, lalu ke menu **Kelola Karyawan** untuk memastikan database
+   karyawan sudah lengkap (30 karyawan awal sudah otomatis terisi dari data
+   yang diberikan saat setup — tambah/edit sesuai kebutuhan).
+2. Admin ke menu **Kelola User** untuk membuat akun bagi setiap petugas
+   lapangan (username + password), lalu membagikan kredensial tersebut ke
+   masing-masing orang.
+3. Admin ke menu **Pengaturan** untuk mengatur batas waktu (cut off)
+   pengisian — masing-masing untuk Senin–Jumat, Sabtu, dan Minggu — lalu
+   pastikan toggle "Aktifkan form" menyala.
+4. Petugas lapangan (atau foreman) login, lalu mengisi form lembur di
+   halaman **Form Lembur**: pilih tanggal, pilih nama dari database
+   (atau ketik bebas), pekerjaan, serta jam mulai & jam selesai.
+5. Admin meninjau pengajuan di menu **Pengajuan** — **Setujui** atau
+   **Tolak** (dengan alasan) satu per satu.
+6. Admin memantau ringkasan jam lembur per orang per bulan (yang sudah
+   disetujui) di menu **Dashboard**, dan mengekspor ke Excel — baik rekap
+   biasa maupun **format harian** yang meniru template internal — untuk
+   keperluan rekap/payroll.
 
 ## 🛠️ Cara Melakukan Perubahan
 
@@ -150,9 +166,12 @@ Vercel agar otomatis ter-deploy ke situs `.vercel.app` yang sudah online.
 
 ### Perubahan yang **tidak perlu ubah kode** (langsung dari halaman admin)
 
-- **Ubah jam mulai lembur standar / jam cut off** → menu **Pengaturan**.
+- **Ubah jam cut off harian** → menu **Pengaturan**.
 - **Buka/tutup form secara manual** → toggle di menu **Pengaturan**.
+- **Tambah/edit/hapus data karyawan** (untuk dropdown nama) → menu
+  **Kelola Karyawan**, satu-satu atau tempel massal dari Excel.
 - **Tambah/hapus/reset password user** → menu **Kelola User**.
+- **Approve/reject pengajuan lembur** → menu **Pengajuan**.
 - **Perbaiki data lembur yang salah input** → tombol **Edit** di menu
   **Pengajuan**.
 
@@ -163,14 +182,18 @@ Struktur folder penting:
 | Folder / File | Isinya |
 |---|---|
 | `app/form/page.tsx` + `components/OvertimeForm.tsx` | Halaman & form pengajuan lembur (user) |
+| `components/EmployeePicker.tsx` | Dropdown pencarian nama karyawan (dengan fallback teks bebas) |
+| `components/TimeSelect.tsx` / `TimeField.tsx` | Pemilih jam 24 jam (dipakai di semua form) |
 | `app/admin/dashboard/page.tsx` | Dashboard analitik admin |
-| `app/admin/submissions/` | Rekap, edit, dan export data lembur |
+| `app/admin/submissions/` | Rekap, approve/reject, edit, dan export data lembur |
+| `app/admin/employees/` | Kelola database karyawan |
 | `app/admin/users/page.tsx` | Kelola user |
-| `app/admin/settings/page.tsx` | Pengaturan jam & cut off |
+| `app/admin/settings/page.tsx` | Pengaturan cut off harian |
 | `lib/actions.ts` | Semua logika submit form (Server Actions) |
-| `lib/settings.ts` | Aturan jam mulai standar & cut off |
-| `lib/db.ts` | Skema database & koneksi Turso |
-| `app/globals.css` + `tailwind.config.ts` | Warna, gaya kartu, tombol, dsb. |
+| `lib/settings.ts` | Aturan cut off harian (Senin–Jumat/Sabtu/Minggu) |
+| `lib/db.ts` | Skema database, migrasi kolom, & koneksi Turso |
+| `lib/employee-seed.ts` | Data awal 30 karyawan (hanya dipakai sekali saat database masih kosong) |
+| `app/globals.css` + `tailwind.config.ts` | Warna, gaya kartu, tombol, animasi, dsb. |
 
 Contoh perubahan umum:
 
@@ -211,10 +234,26 @@ selesai dalam 1-2 menit, tanpa langkah manual apa pun. Jika ingin
 menjalankan perintah git tapi belum familiar, bisa juga minta bantuan
 Claude langsung di sesi berikutnya untuk melakukan perubahan + push-nya.
 
+## Troubleshooting: Data Lembur Terlihat Hilang
+
+Jika di **Vercel** kamu pernah melihat data lembur seperti hilang setelah
+beberapa saat, penyebab paling umum: environment variable `TURSO_DATABASE_URL`
+belum diset di project Vercel (Production), sehingga aplikasi diam-diam
+memakai file SQLite sementara yang tidak permanen antar-instance server.
+Aplikasi sekarang otomatis menampilkan **banner peringatan merah** di semua
+halaman admin bila ini terjadi — kalau muncul, cek kembali langkah
+[Bagian 2 — Deploy ke Vercel](#bagian-2--deploy-ke-vercel) di atas (pastikan
+`TURSO_DATABASE_URL` & `TURSO_AUTH_TOKEN` terisi di Production), lalu
+redeploy. Selain itu, sejak nama sekarang dipilih dari database karyawan
+(bukan diketik manual), jam lembur satu orang juga tidak akan lagi
+"tercecer" akibat variasi penulisan nama (typo/kapitalisasi) — dashboard
+mengelompokkan berdasarkan NIK saat tersedia.
+
 ## Rencana Pengembangan Selanjutnya
 
-- Mengganti isian "Nama" pada form dari teks bebas menjadi dropdown yang
-  bersumber dari data master karyawan (Nama, NIK, dan data lain), begitu
-  data tersebut (misalnya dalam bentuk CSV) sudah tersedia untuk diimpor.
-- Notifikasi (email/WhatsApp) saat mendekati batas waktu cut off.
-- Approval berjenjang (atasan menyetujui sebelum masuk rekap final).
+- Notifikasi (email/WhatsApp) saat mendekati batas waktu cut off, atau saat
+  pengajuan disetujui/ditolak.
+- Approval berjenjang (lebih dari satu level persetujuan sebelum masuk
+  rekap final).
+- Impor karyawan langsung dari file `.xlsx` (saat ini impor massal lewat
+  paste teks tab-separated di menu Kelola Karyawan).

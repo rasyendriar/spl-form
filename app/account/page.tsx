@@ -22,6 +22,7 @@ export default async function AccountPage({
       ? [
           { href: '/admin/dashboard', label: 'Dashboard' },
           { href: '/admin/submissions', label: 'Pengajuan' },
+          { href: '/admin/employees', label: 'Kelola Karyawan' },
           { href: '/admin/users', label: 'Kelola User' },
           { href: '/admin/settings', label: 'Pengaturan' },
         ]

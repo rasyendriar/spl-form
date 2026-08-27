@@ -2,9 +2,30 @@ import { createClient } from '@libsql/client';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
+import { EMPLOYEE_SEED } from './employee-seed';
 
 const url = process.env.TURSO_DATABASE_URL ?? 'file:./data/app.db';
 const authToken = process.env.TURSO_AUTH_TOKEN;
+
+/**
+ * True when this deployment is silently falling back to an ephemeral local
+ * SQLite file instead of a real Turso database. On Vercel this is a bug trap:
+ * each cold start / concurrent instance gets its own empty file, so data
+ * written in one request appears to "disappear" later. Surfaced to admins via
+ * getDbDiagnostics() so it's visible in the UI instead of failing silently.
+ */
+export const isUsingFallbackDb = !process.env.TURSO_DATABASE_URL;
+export const isOnVercel = Boolean(process.env.VERCEL);
+
+if (isUsingFallbackDb && isOnVercel) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[spl-form] TURSO_DATABASE_URL is not set on Vercel — falling back to a local SQLite ' +
+      'file that does NOT persist between deployments/instances. Data will appear to be ' +
+      'lost. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the Vercel project\'s ' +
+      'Environment Variables (Production scope) and redeploy.'
+  );
+}
 
 if (url.startsWith('file:')) {
   // Local dev / testing mode only (production always points TURSO_DATABASE_URL at a
@@ -19,6 +40,17 @@ if (url.startsWith('file:')) {
 export const client = authToken ? createClient({ url, authToken }) : createClient({ url });
 
 let ready: Promise<void> | null = null;
+
+async function columnExists(table: string, column: string): Promise<boolean> {
+  const result = await client.execute(`PRAGMA table_info(${table})`);
+  return result.rows.some((row: any) => row.name === column);
+}
+
+async function ensureColumn(table: string, column: string, definition: string) {
+  if (!(await columnExists(table, column))) {
+    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
 
 async function bootstrap() {
   await client.batch(
@@ -51,9 +83,27 @@ async function bootstrap() {
         pekerjaan TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS employees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nik TEXT UNIQUE NOT NULL,
+        nama TEXT NOT NULL,
+        section TEXT NOT NULL DEFAULT '',
+        position TEXT NOT NULL DEFAULT '',
+        grup TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
     ],
     'write'
   );
+
+  // Migration-safe: submissions already existed in production before nik/status/
+  // review columns existed, so CREATE TABLE IF NOT EXISTS above is a no-op there —
+  // add the new columns explicitly for deployments upgrading from the old schema.
+  await ensureColumn('submissions', 'nik', 'TEXT');
+  await ensureColumn('submissions', 'status', `TEXT NOT NULL DEFAULT 'pending'`);
+  await ensureColumn('submissions', 'reviewed_by', 'INTEGER REFERENCES users(id)');
+  await ensureColumn('submissions', 'reviewed_at', 'TEXT');
+  await ensureColumn('submissions', 'review_note', 'TEXT');
 
   const adminCountResult = await client.execute(
     `SELECT COUNT(*) as c FROM users WHERE role = 'admin'`
@@ -79,16 +129,27 @@ async function bootstrap() {
 
   const defaultSettings: [string, string][] = [
     ['is_open', '1'],
-    ['weekday_start_time', '17:00'],
-    ['saturday_start_time', '13:00'],
     ['weekday_cutoff_time', '23:59'],
     ['saturday_cutoff_time', '23:59'],
+    ['sunday_cutoff_time', '23:59'],
   ];
   for (const [key, value] of defaultSettings) {
     await client.execute({
       sql: `INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`,
       args: [key, value],
     });
+  }
+
+  const employeeCountResult = await client.execute(`SELECT COUNT(*) as c FROM employees`);
+  const employeeCount = Number((employeeCountResult.rows[0] as any).c);
+  if (employeeCount === 0) {
+    await client.batch(
+      EMPLOYEE_SEED.map((e) => ({
+        sql: `INSERT OR IGNORE INTO employees (nik, nama, section, position, grup) VALUES (?, ?, ?, ?, ?)`,
+        args: [e.nik.trim(), e.nama, e.section, e.position, e.grup],
+      })),
+      'write'
+    );
   }
 }
 

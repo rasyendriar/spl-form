@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { queryOne } from '@/lib/db';
 import { updateSubmissionAction } from '@/lib/actions';
+import TimeField from '@/components/TimeField';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: 'Semua kolom wajib diisi dengan benar (jam format HH:MM).',
@@ -9,6 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 type Submission = {
   id: number;
+  nik: string | null;
   nama: string;
   tanggal_lembur: string;
   jam_mulai: string;
@@ -27,7 +29,7 @@ export default async function EditSubmissionPage({
   const query = await searchParams;
 
   const submission = await queryOne<Submission>(
-    `SELECT id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan FROM submissions WHERE id = ?`,
+    `SELECT id, nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan FROM submissions WHERE id = ?`,
     [Number(id)]
   );
 
@@ -65,6 +67,19 @@ export default async function EditSubmissionPage({
           </div>
 
           <div>
+            <label className="label" htmlFor="nik">
+              NIK / No. Reg (opsional)
+            </label>
+            <input
+              id="nik"
+              name="nik"
+              type="text"
+              defaultValue={submission!.nik ?? ''}
+              className="input"
+            />
+          </div>
+
+          <div>
             <label className="label" htmlFor="tanggal_lembur">
               Tanggal Lembur
             </label>
@@ -78,32 +93,14 @@ export default async function EditSubmissionPage({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="label" htmlFor="jam_mulai">
-                Jam Mulai
-              </label>
-              <input
-                id="jam_mulai"
-                name="jam_mulai"
-                type="time"
-                required
-                defaultValue={submission!.jam_mulai}
-                className="input"
-              />
+              <label className="label">Jam Mulai</label>
+              <TimeField name="jam_mulai" defaultValue={submission!.jam_mulai} required />
             </div>
             <div>
-              <label className="label" htmlFor="jam_selesai">
-                Jam Selesai
-              </label>
-              <input
-                id="jam_selesai"
-                name="jam_selesai"
-                type="time"
-                required
-                defaultValue={submission!.jam_selesai}
-                className="input"
-              />
+              <label className="label">Jam Selesai</label>
+              <TimeField name="jam_selesai" defaultValue={submission!.jam_selesai} required />
             </div>
           </div>
 

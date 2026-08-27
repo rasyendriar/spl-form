@@ -1,12 +1,16 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Plus, Trash2, UserPlus, X } from 'lucide-react';
 import { createSubmissionAction } from '@/lib/actions';
+import TimeSelect from './TimeSelect';
+import EmployeePicker, { Employee, PersonValue } from './EmployeePicker';
 
 type Block = {
   id: string;
-  names: string[];
+  people: PersonValue[];
   pekerjaan: string;
+  jamMulai: string;
   jamSelesai: string;
 };
 
@@ -16,38 +20,31 @@ function nextId() {
   return `blk_${Date.now()}_${uid}`;
 }
 
-function isSaturday(dateStr: string): boolean {
-  if (!dateStr) return false;
-  const d = new Date(`${dateStr}T00:00:00`);
-  return !Number.isNaN(d.getTime()) && d.getDay() === 6;
-}
-
 export default function OvertimeForm({
-  defaultName,
+  defaultPerson,
   defaultDate,
-  weekdayStart,
-  saturdayStart,
+  employees,
   disabled,
 }: {
-  defaultName: string;
+  defaultPerson: PersonValue;
   defaultDate: string;
-  weekdayStart: string;
-  saturdayStart: string;
+  employees: Employee[];
   disabled: boolean;
 }) {
   const [tanggalLembur, setTanggalLembur] = useState(defaultDate);
   const [blocks, setBlocks] = useState<Block[]>([
-    { id: nextId(), names: [defaultName], pekerjaan: '', jamSelesai: '' },
+    { id: nextId(), people: [defaultPerson], pekerjaan: '', jamMulai: '', jamSelesai: '' },
   ]);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const saturday = isSaturday(tanggalLembur);
-  const standardStart = saturday ? saturdayStart : weekdayStart;
 
   const blocksJson = useMemo(
     () =>
       JSON.stringify(
-        blocks.map((b) => ({ names: b.names, pekerjaan: b.pekerjaan, jamSelesai: b.jamSelesai }))
+        blocks.map((b) => ({
+          people: b.people,
+          pekerjaan: b.pekerjaan,
+          jamMulai: b.jamMulai,
+          jamSelesai: b.jamSelesai,
+        }))
       ),
     [blocks]
   );
@@ -56,30 +53,35 @@ export default function OvertimeForm({
     setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
 
-  function updateName(blockId: string, index: number, value: string) {
+  function updatePerson(blockId: string, index: number, value: PersonValue) {
     setBlocks((prev) =>
       prev.map((b) =>
-        b.id === blockId ? { ...b, names: b.names.map((n, i) => (i === index ? value : n)) } : b
+        b.id === blockId ? { ...b, people: b.people.map((p, i) => (i === index ? value : p)) } : b
       )
     );
   }
 
-  function addName(blockId: string) {
+  function addPerson(blockId: string) {
     setBlocks((prev) =>
-      prev.map((b) => (b.id === blockId ? { ...b, names: [...b.names, ''] } : b))
+      prev.map((b) =>
+        b.id === blockId ? { ...b, people: [...b.people, { nik: null, nama: '' }] } : b
+      )
     );
   }
 
-  function removeName(blockId: string, index: number) {
+  function removePerson(blockId: string, index: number) {
     setBlocks((prev) =>
       prev.map((b) =>
-        b.id === blockId ? { ...b, names: b.names.filter((_, i) => i !== index) } : b
+        b.id === blockId ? { ...b, people: b.people.filter((_, i) => i !== index) } : b
       )
     );
   }
 
   function addBlock() {
-    setBlocks((prev) => [...prev, { id: nextId(), names: [''], pekerjaan: '', jamSelesai: '' }]);
+    setBlocks((prev) => [
+      ...prev,
+      { id: nextId(), people: [{ nik: null, nama: '' }], pekerjaan: '', jamMulai: '', jamSelesai: '' },
+    ]);
   }
 
   function removeBlock(blockId: string) {
@@ -87,7 +89,7 @@ export default function OvertimeForm({
   }
 
   return (
-    <form ref={formRef} action={createSubmissionAction} className="space-y-5">
+    <form action={createSubmissionAction} className="space-y-5">
       <input type="hidden" name="blocks_json" value={blocksJson} />
 
       <div>
@@ -109,19 +111,9 @@ export default function OvertimeForm({
         </p>
       </div>
 
-      <div className="rounded-2xl bg-[color:var(--color-accent-tint)] px-4 py-3 text-sm text-[#0a4a8f] flex items-center gap-2">
-        <span className="text-base">🕐</span>
-        <span>
-          Jam mulai lembur otomatis: <strong>{standardStart}</strong>{' '}
-          <span className="text-[#0a4a8f]/70">
-            ({saturday ? 'jadwal Sabtu' : 'jadwal hari biasa'})
-          </span>
-        </span>
-      </div>
-
       <div className="space-y-4">
         {blocks.map((block, blockIndex) => (
-          <div key={block.id} className="card p-5 space-y-4">
+          <div key={block.id} className="card p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[color:var(--color-ink-secondary)]">
                 Pekerjaan #{blockIndex + 1}
@@ -130,9 +122,9 @@ export default function OvertimeForm({
                 <button
                   type="button"
                   onClick={() => removeBlock(block.id)}
-                  className="text-xs text-[color:var(--color-danger)] hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[color:var(--color-danger)] hover:underline"
                 >
-                  Hapus pekerjaan ini
+                  <Trash2 size={13} /> Hapus pekerjaan ini
                 </button>
               )}
             </div>
@@ -140,25 +132,24 @@ export default function OvertimeForm({
             <div>
               <label className="label">Nama Orang yang Lembur</label>
               <div className="space-y-2">
-                {block.names.map((name, nameIndex) => (
-                  <div key={nameIndex} className="flex gap-2">
-                    <input
-                      type="text"
-                      required
-                      disabled={disabled}
-                      value={name}
-                      onChange={(e) => updateName(block.id, nameIndex, e.target.value)}
-                      placeholder="Nama lengkap"
-                      className="input"
-                    />
-                    {block.names.length > 1 && !disabled && (
+                {block.people.map((person, personIndex) => (
+                  <div key={personIndex} className="flex gap-2">
+                    <div className="flex-1">
+                      <EmployeePicker
+                        value={person}
+                        onChange={(v) => updatePerson(block.id, personIndex, v)}
+                        employees={employees}
+                        disabled={disabled}
+                      />
+                    </div>
+                    {block.people.length > 1 && !disabled && (
                       <button
                         type="button"
-                        onClick={() => removeName(block.id, nameIndex)}
-                        className="btn-secondary px-3 shrink-0"
+                        onClick={() => removePerson(block.id, personIndex)}
+                        className="btn-secondary px-3 shrink-0 h-fit"
                         aria-label="Hapus nama ini"
                       >
-                        ✕
+                        <X size={16} />
                       </button>
                     )}
                   </div>
@@ -167,10 +158,10 @@ export default function OvertimeForm({
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => addName(block.id)}
-                  className="mt-2 text-sm font-medium text-[color:var(--color-accent)] hover:underline"
+                  onClick={() => addPerson(block.id)}
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[color:var(--color-accent)] hover:underline"
                 >
-                  + Tambah Orang
+                  <UserPlus size={15} /> Tambah Orang
                 </button>
               )}
               <p className="text-xs text-[color:var(--color-ink-muted)] mt-1">
@@ -191,16 +182,25 @@ export default function OvertimeForm({
               />
             </div>
 
-            <div className="max-w-xs">
-              <label className="label">Jam Selesai</label>
-              <input
-                type="time"
-                required
-                disabled={disabled}
-                value={block.jamSelesai}
-                onChange={(e) => updateBlock(block.id, { jamSelesai: e.target.value })}
-                className="input"
-              />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Jam Mulai</label>
+                <TimeSelect
+                  value={block.jamMulai}
+                  onChange={(v) => updateBlock(block.id, { jamMulai: v })}
+                  required
+                  disabled={disabled}
+                />
+              </div>
+              <div>
+                <label className="label">Jam Selesai</label>
+                <TimeSelect
+                  value={block.jamSelesai}
+                  onChange={(v) => updateBlock(block.id, { jamSelesai: v })}
+                  required
+                  disabled={disabled}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -208,7 +208,7 @@ export default function OvertimeForm({
 
       {!disabled && (
         <button type="button" onClick={addBlock} className="btn-secondary w-full">
-          + Tambah Pekerjaan Lain (nama &amp; jam selesai berbeda)
+          <Plus size={16} /> Tambah Pekerjaan Lain (nama &amp; jam berbeda)
         </button>
       )}
 

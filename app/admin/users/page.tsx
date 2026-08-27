@@ -1,3 +1,4 @@
+import { UserPlus, Users } from 'lucide-react';
 import { queryAll } from '@/lib/db';
 import { createUserAction, deleteUserAction, resetPasswordAction } from '@/lib/actions';
 import { formatDateTimeID } from '@/lib/utils';
@@ -25,6 +26,20 @@ type User = {
   created_at: string;
 };
 
+function RoleBadge({ role }: { role: 'admin' | 'user' }) {
+  return (
+    <span
+      className={
+        role === 'admin'
+          ? 'rounded-full bg-[color:var(--color-accent-tint)] text-[#0058b3] px-2 py-0.5 text-xs font-medium'
+          : 'rounded-full bg-black/[0.05] text-[color:var(--color-ink-secondary)] px-2 py-0.5 text-xs font-medium'
+      }
+    >
+      {role === 'admin' ? 'Admin' : 'Petugas Lapangan'}
+    </span>
+  );
+}
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
@@ -40,18 +55,23 @@ export default async function AdminUsersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Kelola User</h1>
-        <p className="text-sm text-[color:var(--color-ink-secondary)]">
-          Buat akun login untuk petugas lapangan, lalu bagikan username &amp; password ke mereka.
-        </p>
+      <div className="flex items-start gap-2">
+        <Users size={22} className="text-[color:var(--color-accent)] mt-0.5 shrink-0" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Kelola User</h1>
+          <p className="text-sm text-[color:var(--color-ink-secondary)]">
+            Buat akun login untuk petugas lapangan, lalu bagikan username &amp; password ke mereka.
+          </p>
+        </div>
       </div>
 
       {error && <p className="alert-error">{error}</p>}
       {ok && <p className="alert-success">{ok}</p>}
 
-      <div className="card p-6">
-        <h2 className="font-semibold mb-4">Tambah User Baru</h2>
+      <div className="card p-4 sm:p-6">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <UserPlus size={16} /> Tambah User Baru
+        </h2>
         <form action={createUserAction} className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="label" htmlFor="full_name">
@@ -96,7 +116,49 @@ export default async function AdminUsersPage({
         </form>
       </div>
 
-      <div className="card overflow-x-auto">
+      {/* Mobile: card list */}
+      <div className="space-y-3 sm:hidden">
+        {users.map((u) => (
+          <div key={u.id} className="card p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium">{u.full_name}</p>
+                <p className="text-xs text-[color:var(--color-ink-muted)]">{u.username}</p>
+              </div>
+              <RoleBadge role={u.role} />
+            </div>
+            <p className="text-xs text-[color:var(--color-ink-muted)]">
+              Dibuat {formatDateTimeID(u.created_at)}
+            </p>
+            <form action={resetPasswordAction} className="flex gap-2">
+              <input type="hidden" name="id" value={u.id} />
+              <input
+                type="text"
+                name="new_password"
+                placeholder="Password baru"
+                minLength={6}
+                required
+                className="input text-xs py-1.5"
+              />
+              <button type="submit" className="btn-secondary text-xs whitespace-nowrap">
+                Reset
+              </button>
+            </form>
+            <form action={deleteUserAction}>
+              <input type="hidden" name="id" value={u.id} />
+              <ConfirmSubmitButton
+                confirmMessage={`Hapus user "${u.full_name}"?`}
+                className="btn-danger text-xs w-full"
+              >
+                Hapus User
+              </ConfirmSubmitButton>
+            </form>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-black/[0.03] text-left text-[color:var(--color-ink-secondary)]">
             <tr>
@@ -114,15 +176,7 @@ export default async function AdminUsersPage({
                 <td className="px-4 py-3">{u.full_name}</td>
                 <td className="px-4 py-3">{u.username}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={
-                      u.role === 'admin'
-                        ? 'rounded-full bg-[color:var(--color-accent-tint)] text-[#0058b3] px-2 py-0.5 text-xs font-medium'
-                        : 'rounded-full bg-black/[0.05] text-[color:var(--color-ink-secondary)] px-2 py-0.5 text-xs font-medium'
-                    }
-                  >
-                    {u.role === 'admin' ? 'Admin' : 'Petugas Lapangan'}
-                  </span>
+                  <RoleBadge role={u.role} />
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
                   {formatDateTimeID(u.created_at)}

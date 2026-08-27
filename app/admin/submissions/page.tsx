@@ -1,8 +1,15 @@
 import Link from 'next/link';
+import { Check, Download, FileSpreadsheet, RotateCcw, X } from 'lucide-react';
 import { queryAll } from '@/lib/db';
-import { deleteSubmissionAction } from '@/lib/actions';
+import {
+  approveSubmissionAction,
+  deleteSubmissionAction,
+  rejectSubmissionAction,
+  resetSubmissionStatusAction,
+} from '@/lib/actions';
 import { formatDateID, formatDuration } from '@/lib/utils';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
+import StatusBadge from '@/components/StatusBadge';
 
 type Row = {
   id: number;
@@ -11,13 +18,14 @@ type Row = {
   jam_mulai: string;
   jam_selesai: string;
   pekerjaan: string;
+  status: string;
   submitted_by: string;
   created_at: string;
 };
 
-function buildQuery(from?: string, to?: string) {
+function buildQuery(from?: string, to?: string, status?: string) {
   let sql = `
-    SELECT s.id, s.nama, s.tanggal_lembur, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.created_at,
+    SELECT s.id, s.nama, s.tanggal_lembur, s.jam_mulai, s.jam_selesai, s.pekerjaan, s.status, s.created_at,
            u.full_name as submitted_by
     FROM submissions s
     JOIN users u ON u.id = s.user_id
@@ -33,6 +41,10 @@ function buildQuery(from?: string, to?: string) {
     conditions.push('s.tanggal_lembur <= ?');
     params.push(to);
   }
+  if (status && status !== 'all') {
+    conditions.push('s.status = ?');
+    params.push(status);
+  }
   if (conditions.length) {
     sql += ' WHERE ' + conditions.join(' AND ');
   }
@@ -43,21 +55,68 @@ function buildQuery(from?: string, to?: string) {
 const OK_MESSAGES: Record<string, string> = {
   deleted: 'Pengajuan berhasil dihapus.',
   updated: 'Pengajuan berhasil diperbarui.',
+  approved: 'Pengajuan disetujui.',
+  rejected: 'Pengajuan ditolak.',
+  reset: 'Status pengajuan dikembalikan ke menunggu.',
 };
+
+const STATUS_TABS = [
+  { value: 'all', label: 'Semua' },
+  { value: 'pending', label: 'Menunggu' },
+  { value: 'approved', label: 'Disetujui' },
+  { value: 'rejected', label: 'Ditolak' },
+];
+
+function ReviewActions({ row }: { row: Row }) {
+  if (row.status === 'pending') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <form action={approveSubmissionAction}>
+          <input type="hidden" name="id" value={row.id} />
+          <button type="submit" className="btn-primary text-xs bg-[color:var(--color-success)]">
+            <Check size={13} /> Setujui
+          </button>
+        </form>
+        <form action={rejectSubmissionAction} className="flex gap-1.5">
+          <input type="hidden" name="id" value={row.id} />
+          <input
+            type="text"
+            name="note"
+            placeholder="Alasan (opsional)"
+            className="input text-xs py-1.5 !min-h-0 w-32"
+          />
+          <button type="submit" className="btn-danger text-xs">
+            <X size={13} /> Tolak
+          </button>
+        </form>
+      </div>
+    );
+  }
+  return (
+    <form action={resetSubmissionStatusAction}>
+      <input type="hidden" name="id" value={row.id} />
+      <button type="submit" className="btn-secondary text-xs">
+        <RotateCcw size={13} /> Set ke Menunggu
+      </button>
+    </form>
+  );
+}
 
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; ok?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; status?: string; ok?: string }>;
 }) {
   const params = await searchParams;
   const from = params.from || '';
   const to = params.to || '';
+  const status = params.status || 'all';
 
-  const { sql, params: queryParams } = buildQuery(from, to);
+  const { sql, params: queryParams } = buildQuery(from, to, status);
   const rows = await queryAll<Row>(sql, queryParams);
 
-  const exportHref = `/admin/submissions/export?${new URLSearchParams({ from, to }).toString()}`;
+  const exportQuery = new URLSearchParams({ from, to, status });
+  const exportHref = `/admin/submissions/export?${exportQuery.toString()}`;
   const ok = params.ok ? OK_MESSAGES[params.ok] : undefined;
 
   return (
@@ -69,14 +128,40 @@ export default async function AdminSubmissionsPage({
             Total {rows.length} pengajuan ditampilkan.
           </p>
         </div>
-        <a href={exportHref} className="btn-primary">
-          Export ke Excel
-        </a>
+        <div className="flex gap-2 flex-wrap">
+          <a href={exportHref} className="btn-secondary">
+            <Download size={16} /> Rekap Excel
+          </a>
+          <Link href="/admin/submissions/export-daily" className="btn-primary">
+            <FileSpreadsheet size={16} /> Export Format Harian
+          </Link>
+        </div>
       </div>
 
       {ok && <p className="alert-success">{ok}</p>}
 
+      <div className="flex gap-1 bg-black/[0.035] rounded-full p-1 w-fit overflow-x-auto max-w-full">
+        {STATUS_TABS.map((tab) => {
+          const q = new URLSearchParams({ from, to, status: tab.value });
+          const active = status === tab.value;
+          return (
+            <a
+              key={tab.value}
+              href={`/admin/submissions?${q.toString()}`}
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                active
+                  ? 'bg-white shadow-sm text-[color:var(--color-ink)]'
+                  : 'text-[color:var(--color-ink-secondary)] hover:text-[color:var(--color-ink)]'
+              }`}
+            >
+              {tab.label}
+            </a>
+          );
+        })}
+      </div>
+
       <form className="card p-4 flex flex-wrap items-end gap-4" method="get">
+        <input type="hidden" name="status" value={status} />
         <div>
           <label className="label" htmlFor="from">
             Dari Tanggal
@@ -94,15 +179,53 @@ export default async function AdminSubmissionsPage({
         </button>
         {(from || to) && (
           <a
-            href="/admin/submissions"
+            href={`/admin/submissions?status=${status}`}
             className="text-sm text-[color:var(--color-ink-secondary)] underline"
           >
-            Reset filter
+            Reset tanggal
           </a>
         )}
       </form>
 
-      <div className="card overflow-x-auto">
+      {/* Mobile: card list */}
+      <div className="space-y-3 sm:hidden">
+        {rows.length === 0 && (
+          <p className="text-center text-sm text-[color:var(--color-ink-muted)] py-6">
+            Belum ada data untuk filter ini.
+          </p>
+        )}
+        {rows.map((r) => (
+          <div key={r.id} className="card p-4 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium">{formatDateID(r.tanggal_lembur)}</p>
+                <p className="text-sm">{r.nama}</p>
+              </div>
+              <StatusBadge status={r.status} />
+            </div>
+            <p className="text-sm text-[color:var(--color-ink-secondary)]">
+              {r.jam_mulai} - {r.jam_selesai} ({formatDuration(r.jam_mulai, r.jam_selesai)})
+            </p>
+            <p className="text-sm text-[color:var(--color-ink-muted)]">{r.pekerjaan}</p>
+            <p className="text-xs text-[color:var(--color-ink-muted)]">Diisi oleh {r.submitted_by}</p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <ReviewActions row={r} />
+              <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary text-xs">
+                Edit
+              </Link>
+              <form action={deleteSubmissionAction}>
+                <input type="hidden" name="id" value={r.id} />
+                <ConfirmSubmitButton confirmMessage="Hapus pengajuan ini?" className="btn-danger text-xs">
+                  Hapus
+                </ConfirmSubmitButton>
+              </form>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-black/[0.03] text-left text-[color:var(--color-ink-secondary)]">
             <tr>
@@ -111,6 +234,7 @@ export default async function AdminSubmissionsPage({
               <th className="px-4 py-3 font-medium">Jam</th>
               <th className="px-4 py-3 font-medium">Durasi</th>
               <th className="px-4 py-3 font-medium">Pekerjaan</th>
+              <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Akun Pengisi</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -119,10 +243,10 @@ export default async function AdminSubmissionsPage({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-6 text-center text-[color:var(--color-ink-muted)]"
                 >
-                  Belum ada data untuk rentang tanggal ini.
+                  Belum ada data untuk filter ini.
                 </td>
               </tr>
             )}
@@ -137,25 +261,30 @@ export default async function AdminSubmissionsPage({
                   {formatDuration(r.jam_mulai, r.jam_selesai)}
                 </td>
                 <td className="px-4 py-3 max-w-xs">{r.pekerjaan}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={r.status} />
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
                   {r.submitted_by}
                 </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <Link
-                    href={`/admin/submissions/${r.id}/edit`}
-                    className="btn-secondary text-xs mr-2"
-                  >
-                    Edit
-                  </Link>
-                  <form action={deleteSubmissionAction} className="inline">
-                    <input type="hidden" name="id" value={r.id} />
-                    <ConfirmSubmitButton
-                      confirmMessage="Hapus pengajuan ini?"
-                      className="btn-danger text-xs"
-                    >
-                      Hapus
-                    </ConfirmSubmitButton>
-                  </form>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col items-end gap-2">
+                    <ReviewActions row={r} />
+                    <div className="flex gap-2">
+                      <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary text-xs">
+                        Edit
+                      </Link>
+                      <form action={deleteSubmissionAction}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <ConfirmSubmitButton
+                          confirmMessage="Hapus pengajuan ini?"
+                          className="btn-danger text-xs"
+                        >
+                          Hapus
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </div>
                 </td>
               </tr>
             ))}

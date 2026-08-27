@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { queryOne, run, runBatch } from './db';
 import { createSession, destroySession, getSession } from './session';
-import { getSettings, isFormOpen, standardStartTime, updateSettings } from './settings';
+import { getSettings, isFormOpen, updateSettings } from './settings';
 import { isValidHHMM } from './utils';
 
 async function requireAdmin() {
@@ -74,9 +74,11 @@ export async function changePasswordAction(formData: FormData) {
 
 // ---------- Submissions (field workers) ----------
 
+type SubmissionPerson = { nik: string | null; nama: string };
 type SubmissionBlock = {
-  names: string[];
+  people: SubmissionPerson[];
   pekerjaan: string;
+  jamMulai: string;
   jamSelesai: string;
 };
 
@@ -105,25 +107,35 @@ export async function createSubmissionAction(formData: FormData) {
     redirect('/form?error=empty');
   }
 
-  const jam_mulai = standardStartTime(settings, tanggal_lembur);
-
-  const rowsToInsert: { nama: string; pekerjaan: string; jamSelesai: string }[] = [];
+  const rowsToInsert: {
+    nik: string | null;
+    nama: string;
+    pekerjaan: string;
+    jamMulai: string;
+    jamSelesai: string;
+  }[] = [];
 
   for (const raw of rawBlocks as SubmissionBlock[]) {
-    const names = Array.isArray(raw?.names)
-      ? raw.names.map((n) => String(n ?? '').trim()).filter(Boolean)
+    const people = Array.isArray(raw?.people)
+      ? raw.people
+          .map((p) => ({
+            nik: p?.nik ? String(p.nik).trim() : null,
+            nama: String(p?.nama ?? '').trim(),
+          }))
+          .filter((p) => p.nama)
       : [];
-    if (names.length === 0) continue; // blok kosong, lewati saja
+    if (people.length === 0) continue; // blok kosong, lewati saja
 
     const pekerjaan = String(raw?.pekerjaan ?? '').trim();
+    const jamMulai = String(raw?.jamMulai ?? '').trim();
     const jamSelesai = String(raw?.jamSelesai ?? '').trim();
 
-    if (!pekerjaan || !isValidHHMM(jamSelesai)) {
+    if (!pekerjaan || !isValidHHMM(jamMulai) || !isValidHHMM(jamSelesai)) {
       redirect('/form?error=invalid_block');
     }
 
-    for (const nama of names) {
-      rowsToInsert.push({ nama, pekerjaan, jamSelesai });
+    for (const person of people) {
+      rowsToInsert.push({ nik: person.nik, nama: person.nama, pekerjaan, jamMulai, jamSelesai });
     }
   }
 
@@ -133,9 +145,17 @@ export async function createSubmissionAction(formData: FormData) {
 
   await runBatch(
     rowsToInsert.map((row) => ({
-      sql: `INSERT INTO submissions (user_id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [session!.id, row.nama, tanggal_lembur, jam_mulai, row.jamSelesai, row.pekerjaan],
+      sql: `INSERT INTO submissions (user_id, nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        session!.id,
+        row.nik,
+        row.nama,
+        tanggal_lembur,
+        row.jamMulai,
+        row.jamSelesai,
+        row.pekerjaan,
+      ],
     }))
   );
 
@@ -150,14 +170,17 @@ export async function deleteSubmissionAction(formData: FormData) {
   if (!session) redirect('/login');
 
   const id = Number(formData.get('id'));
-  const submission = await queryOne<{ user_id: number }>(
-    `SELECT user_id FROM submissions WHERE id = ?`,
+  const submission = await queryOne<{ user_id: number; status: string }>(
+    `SELECT user_id, status FROM submissions WHERE id = ?`,
     [id]
   );
 
   if (!submission) redirect('/form');
   if (submission!.user_id !== session!.id && session!.role !== 'admin') {
     redirect('/form');
+  }
+  if (session!.role !== 'admin' && submission!.status !== 'pending') {
+    redirect('/form?error=locked');
   }
 
   await run(`DELETE FROM submissions WHERE id = ?`, [id]);
@@ -177,6 +200,7 @@ export async function updateSubmissionAction(formData: FormData) {
   await requireAdmin();
 
   const id = Number(formData.get('id'));
+  const nik = String(formData.get('nik') ?? '').trim() || null;
   const nama = String(formData.get('nama') ?? '').trim();
   const tanggal_lembur = String(formData.get('tanggal_lembur') ?? '').trim();
   const jam_mulai = String(formData.get('jam_mulai') ?? '').trim();
@@ -195,14 +219,65 @@ export async function updateSubmissionAction(formData: FormData) {
   }
 
   await run(
-    `UPDATE submissions SET nama = ?, tanggal_lembur = ?, jam_mulai = ?, jam_selesai = ?, pekerjaan = ?
+    `UPDATE submissions SET nik = ?, nama = ?, tanggal_lembur = ?, jam_mulai = ?, jam_selesai = ?, pekerjaan = ?
      WHERE id = ?`,
-    [nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, id]
+    [nik, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, id]
   );
 
   revalidatePath('/admin/submissions');
   revalidatePath('/admin/dashboard');
   redirect('/admin/submissions?ok=updated');
+}
+
+// ---------- Admin: approval ----------
+
+export async function approveSubmissionAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const id = Number(formData.get('id'));
+
+  await run(
+    `UPDATE submissions SET status = 'approved', reviewed_by = ?, reviewed_at = datetime('now'), review_note = NULL
+     WHERE id = ?`,
+    [admin!.id, id]
+  );
+
+  revalidatePath('/admin/submissions');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/form');
+  redirect('/admin/submissions?ok=approved');
+}
+
+export async function rejectSubmissionAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const id = Number(formData.get('id'));
+  const note = String(formData.get('note') ?? '').trim();
+
+  await run(
+    `UPDATE submissions SET status = 'rejected', reviewed_by = ?, reviewed_at = datetime('now'), review_note = ?
+     WHERE id = ?`,
+    [admin!.id, note || null, id]
+  );
+
+  revalidatePath('/admin/submissions');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/form');
+  redirect('/admin/submissions?ok=rejected');
+}
+
+export async function resetSubmissionStatusAction(formData: FormData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+
+  await run(
+    `UPDATE submissions SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL, review_note = NULL
+     WHERE id = ?`,
+    [id]
+  );
+
+  revalidatePath('/admin/submissions');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/form');
+  redirect('/admin/submissions?ok=reset');
 }
 
 // ---------- Admin: user management ----------
@@ -279,35 +354,136 @@ export async function deleteUserAction(formData: FormData) {
   redirect('/admin/users?ok=deleted');
 }
 
-// ---------- Admin: settings (jam mulai standar & cutoff harian) ----------
+// ---------- Admin: settings (cut off harian) ----------
 
 export async function updateSettingsAction(formData: FormData) {
   await requireAdmin();
 
   const is_open = formData.get('is_open') === 'on';
-  const weekday_start_time = String(formData.get('weekday_start_time') ?? '').trim();
-  const saturday_start_time = String(formData.get('saturday_start_time') ?? '').trim();
   const weekday_cutoff_time = String(formData.get('weekday_cutoff_time') ?? '').trim();
   const saturday_cutoff_time = String(formData.get('saturday_cutoff_time') ?? '').trim();
+  const sunday_cutoff_time = String(formData.get('sunday_cutoff_time') ?? '').trim();
 
   if (
-    !isValidHHMM(weekday_start_time) ||
-    !isValidHHMM(saturday_start_time) ||
     !isValidHHMM(weekday_cutoff_time) ||
-    !isValidHHMM(saturday_cutoff_time)
+    !isValidHHMM(saturday_cutoff_time) ||
+    !isValidHHMM(sunday_cutoff_time)
   ) {
     redirect('/admin/settings?error=invalid');
   }
 
   await updateSettings({
     is_open,
-    weekday_start_time,
-    saturday_start_time,
     weekday_cutoff_time,
     saturday_cutoff_time,
+    sunday_cutoff_time,
   });
 
   revalidatePath('/admin/settings');
   revalidatePath('/form');
   redirect('/admin/settings?ok=1');
+}
+
+// ---------- Admin: kelola data karyawan ----------
+
+export async function createEmployeeAction(formData: FormData) {
+  await requireAdmin();
+
+  const nik = String(formData.get('nik') ?? '').trim();
+  const nama = String(formData.get('nama') ?? '').trim();
+  const section = String(formData.get('section') ?? '').trim();
+  const position = String(formData.get('position') ?? '').trim();
+  const grup = String(formData.get('grup') ?? '').trim();
+
+  if (!nik || !nama) {
+    redirect('/admin/employees?error=invalid');
+  }
+
+  try {
+    await run(
+      `INSERT INTO employees (nik, nama, section, position, grup) VALUES (?, ?, ?, ?, ?)`,
+      [nik, nama, section, position, grup]
+    );
+  } catch (e: any) {
+    if (String(e?.message ?? '').includes('UNIQUE')) {
+      redirect('/admin/employees?error=exists');
+    }
+    throw e;
+  }
+
+  revalidatePath('/admin/employees');
+  redirect('/admin/employees?ok=created');
+}
+
+export async function updateEmployeeAction(formData: FormData) {
+  await requireAdmin();
+
+  const id = Number(formData.get('id'));
+  const nik = String(formData.get('nik') ?? '').trim();
+  const nama = String(formData.get('nama') ?? '').trim();
+  const section = String(formData.get('section') ?? '').trim();
+  const position = String(formData.get('position') ?? '').trim();
+  const grup = String(formData.get('grup') ?? '').trim();
+
+  if (!id || !nik || !nama) {
+    redirect('/admin/employees?error=invalid');
+  }
+
+  try {
+    await run(
+      `UPDATE employees SET nik = ?, nama = ?, section = ?, position = ?, grup = ? WHERE id = ?`,
+      [nik, nama, section, position, grup, id]
+    );
+  } catch (e: any) {
+    if (String(e?.message ?? '').includes('UNIQUE')) {
+      redirect('/admin/employees?error=exists');
+    }
+    throw e;
+  }
+
+  revalidatePath('/admin/employees');
+  redirect('/admin/employees?ok=updated');
+}
+
+export async function deleteEmployeeAction(formData: FormData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  await run(`DELETE FROM employees WHERE id = ?`, [id]);
+  revalidatePath('/admin/employees');
+  redirect('/admin/employees?ok=deleted');
+}
+
+export async function bulkImportEmployeesAction(formData: FormData) {
+  await requireAdmin();
+
+  const raw = String(formData.get('bulk_data') ?? '');
+  const lines = raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const rows: { nik: string; nama: string; section: string; position: string; grup: string }[] = [];
+  for (const line of lines) {
+    const cols = line.split('\t').map((c) => c.trim());
+    const [nik, nama, section = '', position = '', grup = ''] = cols;
+    if (nik && nama) {
+      rows.push({ nik, nama, section, position, grup });
+    }
+  }
+
+  if (rows.length === 0) {
+    redirect('/admin/employees?error=empty_bulk');
+  }
+
+  await runBatch(
+    rows.map((r) => ({
+      sql: `INSERT INTO employees (nik, nama, section, position, grup) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(nik) DO UPDATE SET nama = excluded.nama, section = excluded.section,
+              position = excluded.position, grup = excluded.grup`,
+      args: [r.nik, r.nama, r.section, r.position, r.grup],
+    }))
+  );
+
+  revalidatePath('/admin/employees');
+  redirect(`/admin/employees?ok=imported&count=${rows.length}`);
 }

@@ -43,7 +43,7 @@ body {
 }
 
 .btn {
-  @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[15px] font-medium
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 min-h-[44px] text-[15px] font-medium
     transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98];
 }
 
@@ -69,7 +69,7 @@ body {
 }
 
 .input {
-  @apply w-full rounded-2xl border bg-white px-4 py-2.5 text-[15px] transition
+  @apply w-full rounded-2xl border bg-white px-4 py-2.5 min-h-[44px] text-[15px] transition
     focus:outline-none focus:ring-4;
   border-color: rgba(0, 0, 0, 0.1);
 }
@@ -105,4 +105,73 @@ body {
   background: var(--color-warning-tint);
   border-color: rgba(185, 121, 10, 0.2);
   color: #8a5a00;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+}
+.badge-pending {
+  @apply badge;
+  background: var(--color-warning-tint);
+  color: #8a5a00;
+}
+.badge-approved {
+  @apply badge;
+  background: var(--color-success-tint);
+  color: #0a7d0a;
+}
+.badge-rejected {
+  @apply badge;
+  background: var(--color-danger-tint);
+  color: #b3261e;
+}
+
+.card-interactive {
+  @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.28s ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-spin-slow {
+    animation: none;
+  }
+  .card-interactive {
+    transition: none;
+  }
 }
