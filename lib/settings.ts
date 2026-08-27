@@ -1,15 +1,12 @@
-import db from './db';
+import { queryAll, run } from './db';
 
 export type AppSettings = {
   is_open: boolean;
   cutoff_at: string; // ISO-ish local datetime string from <input type="datetime-local">, or '' for none
 };
 
-export function getSettings(): AppSettings {
-  const rows = db.prepare(`SELECT key, value FROM settings`).all() as {
-    key: string;
-    value: string;
-  }[];
+export async function getSettings(): Promise<AppSettings> {
+  const rows = await queryAll<{ key: string; value: string }>(`SELECT key, value FROM settings`);
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
     is_open: map.is_open === '1',
@@ -17,13 +14,11 @@ export function getSettings(): AppSettings {
   };
 }
 
-export function updateSettings(next: AppSettings) {
-  const upsert = db.prepare(
-    `INSERT INTO settings (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-  );
-  upsert.run('is_open', next.is_open ? '1' : '0');
-  upsert.run('cutoff_at', next.cutoff_at ?? '');
+export async function updateSettings(next: AppSettings) {
+  const upsert = `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`;
+  await run(upsert, ['is_open', next.is_open ? '1' : '0']);
+  await run(upsert, ['cutoff_at', next.cutoff_at ?? '']);
 }
 
 export function isFormOpen(settings: AppSettings, now: Date = new Date()): boolean {

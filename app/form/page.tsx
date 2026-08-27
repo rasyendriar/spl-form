@@ -3,7 +3,7 @@ import { getSession } from '@/lib/session';
 import { getSettings, isFormOpen } from '@/lib/settings';
 import { createSubmissionAction, deleteSubmissionAction } from '@/lib/actions';
 import { formatDateID, formatDateTimeID, formatDuration, todayInputValue } from '@/lib/utils';
-import db from '@/lib/db';
+import { queryAll } from '@/lib/db';
 import Header from '@/components/Header';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
@@ -31,16 +31,15 @@ export default async function FormPage({
   if (!session) redirect('/login');
 
   const params = await searchParams;
-  const settings = getSettings();
+  const settings = await getSettings();
   const open = isFormOpen(settings);
 
-  const submissions = db
-    .prepare(
-      `SELECT id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, created_at
-       FROM submissions WHERE user_id = ?
-       ORDER BY tanggal_lembur DESC, id DESC`
-    )
-    .all(session!.id) as Submission[];
+  const submissions = await queryAll<Submission>(
+    `SELECT id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan, created_at
+     FROM submissions WHERE user_id = ?
+     ORDER BY tanggal_lembur DESC, id DESC`,
+    [session!.id]
+  );
 
   const nav =
     session!.role === 'admin'

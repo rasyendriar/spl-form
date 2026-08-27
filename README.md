@@ -25,9 +25,10 @@ mengekspor rekap data.
 ## Teknologi
 
 - [Next.js](https://nextjs.org/) (App Router) + TypeScript + Tailwind CSS
-- SQLite (via `better-sqlite3`) sebagai penyimpanan data — file database
-  tersimpan di `data/app.db`, dibuat otomatis saat aplikasi pertama kali
-  dijalankan.
+- [Turso](https://turso.tech/) (database SQLite terdistribusi, via `@libsql/client`)
+  sebagai penyimpanan data. Saat `TURSO_DATABASE_URL` tidak diatur, aplikasi
+  otomatis memakai file SQLite lokal di `data/app.db` — cocok untuk
+  development di komputer sendiri tanpa perlu setup apa pun.
 - Autentikasi berbasis sesi (cookie httpOnly) dengan password di-hash
   menggunakan `bcryptjs`.
 - Export Excel menggunakan `xlsx` (SheetJS).
@@ -39,8 +40,8 @@ npm install
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Saat pertama kali dijalankan, aplikasi otomatis
-membuat akun admin default:
+Buka `http://localhost:3000`. Tanpa konfigurasi tambahan, aplikasi otomatis
+memakai file SQLite lokal (`data/app.db`) dan membuat akun admin default:
 
 - **Username:** `admin`
 - **Password:** `admin123`
@@ -55,16 +56,76 @@ npm run build
 npm run start
 ```
 
-## Catatan Deployment
+## 🚀 Panduan Deploy Gratis (Vercel + Turso)
 
-Aplikasi ini menyimpan data dalam file SQLite lokal (`data/app.db`), sehingga:
+Cara ini **100% gratis tanpa kartu kredit**, dan data pengajuan lembur aman
+tersimpan permanen (tidak hilang saat aplikasi di-redeploy). Ada dua bagian:
+menyiapkan database (Turso), lalu men-deploy aplikasi (Vercel).
 
-- Harus dijalankan di server Node.js yang persisten (bukan platform
-  serverless/edge tanpa filesystem persisten), misalnya VPS, container
-  Docker dengan volume, atau layanan seperti Railway/Render.
-- Pastikan folder `data/` dipasang di **persistent volume** agar data tidak
-  hilang saat aplikasi di-redeploy atau container di-restart.
-- Lakukan backup berkala terhadap file `data/app.db`.
+### Bagian 1 — Buat Database Gratis di Turso
+
+1. Buka [turso.tech](https://turso.tech/) dan daftar akun gratis (bisa pakai
+   akun GitHub, tanpa kartu kredit).
+2. Install Turso CLI di komputer kamu:
+   ```bash
+   curl -sSfL https://get.tur.so/install.sh | bash
+   ```
+   (Pengguna Windows: ikuti petunjuk instalasi di [docs.turso.tech](https://docs.turso.tech/cli/installation).)
+3. Login dari terminal:
+   ```bash
+   turso auth login
+   ```
+4. Buat database baru (bebas ganti nama `spl-form` sesuai selera):
+   ```bash
+   turso db create spl-form
+   ```
+5. Ambil connection URL-nya:
+   ```bash
+   turso db show spl-form --url
+   ```
+   Hasilnya berbentuk `libsql://spl-form-namamu.turso.io` — simpan ini.
+6. Buat token akses:
+   ```bash
+   turso db tokens create spl-form
+   ```
+   Simpan token yang muncul (panjang, diawali `eyJ...`).
+
+> Alternatif: semua langkah di atas juga bisa dilakukan lewat dashboard web
+> Turso tanpa CLI, jika kamu lebih suka klik-klik di browser.
+
+### Bagian 2 — Deploy ke Vercel
+
+1. Pastikan kode sudah ada di repository GitHub kamu (repo ini sudah siap).
+2. Buka [vercel.com](https://vercel.com/) dan daftar/login **pakai akun
+   GitHub** (gratis, tanpa kartu kredit untuk paket Hobby).
+3. Klik **Add New → Project**, lalu pilih repository `spl-form` ini.
+4. Sebelum klik Deploy, buka bagian **Environment Variables** dan tambahkan:
+
+   | Name | Value |
+   |---|---|
+   | `TURSO_DATABASE_URL` | URL dari langkah 5 Bagian 1 (`libsql://...`) |
+   | `TURSO_AUTH_TOKEN` | Token dari langkah 6 Bagian 1 |
+
+5. Klik **Deploy**. Tunggu 1-2 menit sampai selesai.
+6. Buka domain yang diberikan Vercel (contoh: `spl-form.vercel.app`), login
+   dengan `admin` / `admin123`, lalu **segera ganti password** dan buat akun
+   untuk petugas lapangan di menu **Kelola User**.
+
+Selesai — aplikasi sudah online, gratis selamanya, dan data tersimpan aman di
+Turso meskipun Vercel me-redeploy atau me-restart aplikasi kapan pun.
+
+### Update Aplikasi di Kemudian Hari
+
+Setiap kali ada perubahan kode dan di-`git push` ke branch utama, Vercel
+otomatis build & deploy ulang secara otomatis — tidak perlu langkah manual.
+
+### Catatan Batas Gratis
+
+- **Turso free tier**: 500 database, total 5 GB penyimpanan, 1 miliar baris
+  dibaca/bulan — jauh lebih dari cukup untuk pencatatan lembur internal.
+- **Vercel Hobby**: gratis untuk penggunaan personal/internal seperti ini,
+  tanpa batas waktu.
+- Tidak ada kartu kredit yang diminta di kedua layanan untuk tier gratis ini.
 
 ## Alur Penggunaan
 

@@ -3,7 +3,7 @@
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import db from './db';
+import { queryOne, run } from './db';
 import { createSession, destroySession, getSession } from './session';
 import { getSettings, isFormOpen, updateSettings } from './settings';
 
@@ -25,9 +25,10 @@ export async function loginAction(formData: FormData) {
     redirect('/login?error=empty');
   }
 
-  const user = db
-    .prepare(`SELECT id, password_hash, role FROM users WHERE username = ?`)
-    .get(username) as { id: number; password_hash: string; role: string } | undefined;
+  const user = await queryOne<{ id: number; password_hash: string; role: string }>(
+    `SELECT id, password_hash, role FROM users WHERE username = ?`,
+    [username]
+  );
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     redirect('/login?error=invalid');
@@ -50,11 +51,12 @@ export async function changePasswordAction(formData: FormData) {
   const newPassword = String(formData.get('new_password') ?? '');
   const confirmPassword = String(formData.get('confirm_password') ?? '');
 
-  const user = db
-    .prepare(`SELECT password_hash FROM users WHERE id = ?`)
-    .get(session!.id) as { password_hash: string };
+  const user = await queryOne<{ password_hash: string }>(
+    `SELECT password_hash FROM users WHERE id = ?`,
+    [session!.id]
+  );
 
-  if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+  if (!bcrypt.compareSync(currentPassword, user!.password_hash)) {
     redirect('/account?error=wrong_current');
   }
   if (newPassword.length < 6) {
@@ -65,7 +67,7 @@ export async function changePasswordAction(formData: FormData) {
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hash, session!.id);
+  await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hash, session!.id]);
   redirect('/account?ok=1');
 }
 
@@ -75,7 +77,7 @@ export async function createSubmissionAction(formData: FormData) {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const settings = getSettings();
+  const settings = await getSettings();
   if (!isFormOpen(settings)) {
     redirect('/form?error=closed');
   }
@@ -90,10 +92,11 @@ export async function createSubmissionAction(formData: FormData) {
     redirect('/form?error=empty');
   }
 
-  db.prepare(
+  await run(
     `INSERT INTO submissions (user_id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(session!.id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan);
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [session!.id, nama, tanggal_lembur, jam_mulai, jam_selesai, pekerjaan]
+  );
 
   revalidatePath('/form');
   redirect('/form?ok=1');
@@ -104,16 +107,17 @@ export async function deleteSubmissionAction(formData: FormData) {
   if (!session) redirect('/login');
 
   const id = Number(formData.get('id'));
-  const submission = db
-    .prepare(`SELECT user_id FROM submissions WHERE id = ?`)
-    .get(id) as { user_id: number } | undefined;
+  const submission = await queryOne<{ user_id: number }>(
+    `SELECT user_id FROM submissions WHERE id = ?`,
+    [id]
+  );
 
   if (!submission) redirect('/form');
   if (submission!.user_id !== session!.id && session!.role !== 'admin') {
     redirect('/form');
   }
 
-  db.prepare(`DELETE FROM submissions WHERE id = ?`).run(id);
+  await run(`DELETE FROM submissions WHERE id = ?`, [id]);
   revalidatePath('/form');
   revalidatePath('/admin/submissions');
 
@@ -139,9 +143,12 @@ export async function createUserAction(formData: FormData) {
 
   try {
     const hash = bcrypt.hashSync(password, 10);
-    db.prepare(
-      `INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)`
-    ).run(username, hash, full_name, role);
+    await run(`INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)`, [
+      username,
+      hash,
+      full_name,
+      role,
+    ]);
   } catch (e: any) {
     if (String(e?.message ?? '').includes('UNIQUE')) {
       redirect('/admin/users?error=exists');
@@ -164,7 +171,7 @@ export async function resetPasswordAction(formData: FormData) {
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hash, id);
+  await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hash, id]);
 
   revalidatePath('/admin/users');
   redirect('/admin/users?ok=reset');
@@ -178,20 +185,18 @@ export async function deleteUserAction(formData: FormData) {
     redirect('/admin/users?error=self_delete');
   }
 
-  const target = db.prepare(`SELECT role FROM users WHERE id = ?`).get(id) as
-    | { role: string }
-    | undefined;
+  const target = await queryOne<{ role: string }>(`SELECT role FROM users WHERE id = ?`, [id]);
 
   if (target?.role === 'admin') {
-    const adminCount = db
-      .prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'admin'`)
-      .get() as { c: number };
-    if (adminCount.c <= 1) {
+    const adminCountRow = await queryOne<{ c: number }>(
+      `SELECT COUNT(*) as c FROM users WHERE role = 'admin'`
+    );
+    if (Number(adminCountRow?.c ?? 0) <= 1) {
       redirect('/admin/users?error=last_admin');
     }
   }
 
-  db.prepare(`DELETE FROM users WHERE id = ?`).run(id);
+  await run(`DELETE FROM users WHERE id = ?`, [id]);
   revalidatePath('/admin/users');
   redirect('/admin/users?ok=deleted');
 }
@@ -204,7 +209,7 @@ export async function updateSettingsAction(formData: FormData) {
   const is_open = formData.get('is_open') === 'on';
   const cutoff_at = String(formData.get('cutoff_at') ?? '').trim();
 
-  updateSettings({ is_open, cutoff_at });
+  await updateSettings({ is_open, cutoff_at });
 
   revalidatePath('/admin/settings');
   revalidatePath('/form');

@@ -8,7 +8,7 @@ export default async function AdminSettingsPage({
   searchParams: Promise<{ ok?: string }>;
 }) {
   const params = await searchParams;
-  const settings = getSettings();
+  const settings = await getSettings();
   const open = isFormOpen(settings);
 
   return (

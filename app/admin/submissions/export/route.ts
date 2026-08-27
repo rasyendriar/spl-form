@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import db from '@/lib/db';
+import { queryAll } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { formatDuration } from '@/lib/utils';
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
   sql += ' ORDER BY s.tanggal_lembur ASC, s.id ASC';
 
-  const rows = db.prepare(sql).all(...params) as Row[];
+  const rows = await queryAll<Row>(sql, params);
 
   const data = rows.map((r) => ({
     Tanggal: r.tanggal_lembur,

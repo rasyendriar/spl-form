@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import { queryAll } from '@/lib/db';
 import { createUserAction, deleteUserAction, resetPasswordAction } from '@/lib/actions';
 import { formatDateTimeID } from '@/lib/utils';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
@@ -31,9 +31,9 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
   const params = await searchParams;
-  const users = db
-    .prepare(`SELECT id, username, full_name, role, created_at FROM users ORDER BY id ASC`)
-    .all() as User[];
+  const users = await queryAll<User>(
+    `SELECT id, username, full_name, role, created_at FROM users ORDER BY id ASC`
+  );
 
   const error = params.error ? ERROR_MESSAGES[params.error] : undefined;
   const ok = params.ok ? OK_MESSAGES[params.ok] : undefined;

@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import { queryAll } from '@/lib/db';
 import { deleteSubmissionAction } from '@/lib/actions';
 import { formatDateID, formatDuration } from '@/lib/utils';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
@@ -49,7 +49,7 @@ export default async function AdminSubmissionsPage({
   const to = params.to || '';
 
   const { sql, params: queryParams } = buildQuery(from, to);
-  const rows = db.prepare(sql).all(...queryParams) as Row[];
+  const rows = await queryAll<Row>(sql, queryParams);
 
   const exportHref = `/admin/submissions/export?${new URLSearchParams({ from, to }).toString()}`;
 
