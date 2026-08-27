@@ -20,6 +20,7 @@ export default async function AccountPage({
   const nav =
     session!.role === 'admin'
       ? [
+          { href: '/admin/dashboard', label: 'Dashboard' },
           { href: '/admin/submissions', label: 'Pengajuan' },
           { href: '/admin/users', label: 'Kelola User' },
           { href: '/admin/settings', label: 'Pengaturan' },
@@ -33,7 +34,7 @@ export default async function AccountPage({
     <div>
       <Header user={session!} nav={nav} />
       <main className="mx-auto max-w-sm px-4 py-8">
-        <h1 className="text-xl font-bold mb-4">Ganti Password</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-4">Ganti Password</h1>
         <div className="card p-6">
           <form action={changePasswordAction} className="space-y-4">
             {error && <p className="alert-error">{error}</p>}

@@ -41,8 +41,8 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Kelola User</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold tracking-tight">Kelola User</h1>
+        <p className="text-sm text-[color:var(--color-ink-secondary)]">
           Buat akun login untuk petugas lapangan, lalu bagikan username &amp; password ke mereka.
         </p>
       </div>
@@ -98,7 +98,7 @@ export default async function AdminUsersPage({
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
+          <thead className="bg-black/[0.03] text-left text-[color:var(--color-ink-secondary)]">
             <tr>
               <th className="px-4 py-3 font-medium">Nama</th>
               <th className="px-4 py-3 font-medium">Username</th>
@@ -108,7 +108,7 @@ export default async function AdminUsersPage({
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-black/5">
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="px-4 py-3">{u.full_name}</td>
@@ -117,14 +117,14 @@ export default async function AdminUsersPage({
                   <span
                     className={
                       u.role === 'admin'
-                        ? 'rounded-full bg-brand-50 text-brand-700 px-2 py-0.5 text-xs font-medium'
-                        : 'rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-xs font-medium'
+                        ? 'rounded-full bg-[color:var(--color-accent-tint)] text-[#0058b3] px-2 py-0.5 text-xs font-medium'
+                        : 'rounded-full bg-black/[0.05] text-[color:var(--color-ink-secondary)] px-2 py-0.5 text-xs font-medium'
                     }
                   >
                     {u.role === 'admin' ? 'Admin' : 'Petugas Lapangan'}
                   </span>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-slate-500">
+                <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
                   {formatDateTimeID(u.created_at)}
                 </td>
                 <td className="px-4 py-3">

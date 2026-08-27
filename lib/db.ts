@@ -77,14 +77,19 @@ async function bootstrap() {
     }
   }
 
-  await client.execute({
-    sql: `INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`,
-    args: ['is_open', '1'],
-  });
-  await client.execute({
-    sql: `INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`,
-    args: ['cutoff_at', ''],
-  });
+  const defaultSettings: [string, string][] = [
+    ['is_open', '1'],
+    ['weekday_start_time', '17:00'],
+    ['saturday_start_time', '13:00'],
+    ['weekday_cutoff_time', '23:59'],
+    ['saturday_cutoff_time', '23:59'],
+  ];
+  for (const [key, value] of defaultSettings) {
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`,
+      args: [key, value],
+    });
+  }
 }
 
 export async function ensureSchema() {
@@ -106,4 +111,11 @@ export async function queryOne<T = any>(sql: string, args: any[] = []): Promise<
 export async function run(sql: string, args: any[] = []) {
   await ensureSchema();
   return client.execute({ sql, args });
+}
+
+/** Executes multiple write statements atomically in a single round trip. */
+export async function runBatch(statements: { sql: string; args: any[] }[]) {
+  await ensureSchema();
+  if (statements.length === 0) return;
+  return client.batch(statements, 'write');
 }

@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import Header from '@/components/Header';
 
 const NAV = [
+  { href: '/admin/dashboard', label: 'Dashboard' },
   { href: '/admin/submissions', label: 'Pengajuan' },
   { href: '/admin/users', label: 'Kelola User' },
   { href: '/admin/settings', label: 'Pengaturan' },
@@ -17,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div>
       <Header user={session} nav={NAV} />
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
     </div>
   );
 }

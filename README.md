@@ -8,19 +8,33 @@ mengekspor rekap data.
 
 - **Login user & admin.** Setiap orang login dengan username/password yang
   dibuatkan oleh admin (tanpa registrasi mandiri).
-- **Form pengajuan lembur** (untuk user lapangan): Nama, tanggal lembur (bisa
-  memilih hari lain untuk rencana ke depan), jam mulai & jam selesai, serta
-  keterangan pekerjaan. Nama saat ini masih isian teks bebas — lihat bagian
-  "Rencana pengembangan" di bawah untuk rencana dropdown Nama/NIK.
+- **Form pengajuan lembur** (untuk user lapangan):
+  - Tanggal lembur bebas dipilih (bisa hari lain untuk rencana ke depan).
+  - **Jam mulai otomatis** sesuai jam standar yang diatur admin (beda untuk
+    hari biasa vs Sabtu) — user hanya perlu mengisi **jam selesai**.
+  - Bisa mengisi **beberapa orang sekaligus untuk pekerjaan yang sama** (klik
+    "+ Tambah Orang"), dan **beberapa pekerjaan berbeda dalam satu kali
+    submit** (klik "+ Tambah Pekerjaan Lain") — cocok untuk foreman yang
+    input lembur satu tim sekaligus.
+  - Nama saat ini masih isian teks bebas — lihat bagian "Rencana
+    pengembangan" di bawah untuk rencana dropdown Nama/NIK.
 - **Riwayat pengajuan** milik user sendiri, dengan opsi hapus.
 - **Panel admin:**
-  - **Pengajuan**: rekap semua pengajuan lembur, bisa difilter berdasarkan
-    rentang tanggal, dan diekspor ke file Excel (`.xlsx`).
+  - **Dashboard**: kartu ringkasan (total jam lembur, total pengajuan, jumlah
+    orang aktif, rata-rata jam/orang) beserta perbandingan ke bulan lalu,
+    ranking jam lembur per orang, dan tren harian — untuk memantau siapa
+    lembur berapa lama setiap bulan.
+  - **Pengajuan**: rekap semua pengajuan lembur (bisa difilter berdasarkan
+    rentang tanggal), **edit** data lembur secara manual, dan ekspor ke file
+    Excel (`.xlsx`).
   - **Kelola User**: admin membuat username & password untuk user lapangan
     (atau admin lain), reset password, dan menghapus user.
-  - **Pengaturan**: admin mengatur toggle buka/tutup form, serta batas waktu
-    (cut off) otomatis kapan form akan tertutup.
+  - **Pengaturan**: jam mulai lembur standar + batas waktu (cut off)
+    pengisian, masing-masing terpisah untuk **hari biasa** dan **Sabtu**,
+    plus tombol darurat untuk menutup form secara manual kapan pun.
 - **Ganti password** mandiri untuk setiap user yang sudah login.
+- Tampilan bergaya kartu, terinspirasi Apple, dengan header kaca (frosted
+  glass) dan aksen biru.
 
 ## Teknologi
 
@@ -118,12 +132,84 @@ otomatis build & deploy ulang secara otomatis — tidak perlu langkah manual.
 1. Admin login, lalu ke menu **Kelola User** untuk membuat akun bagi setiap
    petugas lapangan (username + password), lalu membagikan kredensial
    tersebut ke masing-masing orang.
-2. Admin ke menu **Pengaturan** untuk memastikan form dalam status
-   "TERBUKA", dan (opsional) menentukan batas waktu otomatis pengisian.
-3. Petugas lapangan login dengan akun yang diberikan, lalu mengisi form
-   lembur di halaman **Form Lembur**.
-4. Admin memantau seluruh pengajuan di menu **Pengajuan**, memfilter
-   berdasarkan tanggal, dan mengekspor ke Excel untuk keperluan rekap/payroll.
+2. Admin ke menu **Pengaturan** untuk mengatur jam mulai lembur standar dan
+   batas waktu (cut off) pengisian — masing-masing untuk hari biasa dan
+   Sabtu — lalu pastikan toggle "Aktifkan form" menyala.
+3. Petugas lapangan (atau foreman) login, lalu mengisi form lembur di
+   halaman **Form Lembur**: pilih tanggal, isi satu atau beberapa nama per
+   pekerjaan, dan jam selesai (jam mulai otomatis terisi).
+4. Admin memantau ringkasan jam lembur per orang per bulan di menu
+   **Dashboard**, melihat/mengedit data mentah di menu **Pengajuan**, dan
+   mengekspor ke Excel untuk keperluan rekap/payroll.
+
+## 🛠️ Cara Melakukan Perubahan
+
+Panduan singkat untuk perubahan-perubahan yang paling sering dibutuhkan.
+Semua perubahan kode perlu di-`git push` ke branch yang sudah tersambung ke
+Vercel agar otomatis ter-deploy ke situs `.vercel.app` yang sudah online.
+
+### Perubahan yang **tidak perlu ubah kode** (langsung dari halaman admin)
+
+- **Ubah jam mulai lembur standar / jam cut off** → menu **Pengaturan**.
+- **Buka/tutup form secara manual** → toggle di menu **Pengaturan**.
+- **Tambah/hapus/reset password user** → menu **Kelola User**.
+- **Perbaiki data lembur yang salah input** → tombol **Edit** di menu
+  **Pengajuan**.
+
+### Perubahan yang perlu ubah kode
+
+Struktur folder penting:
+
+| Folder / File | Isinya |
+|---|---|
+| `app/form/page.tsx` + `components/OvertimeForm.tsx` | Halaman & form pengajuan lembur (user) |
+| `app/admin/dashboard/page.tsx` | Dashboard analitik admin |
+| `app/admin/submissions/` | Rekap, edit, dan export data lembur |
+| `app/admin/users/page.tsx` | Kelola user |
+| `app/admin/settings/page.tsx` | Pengaturan jam & cut off |
+| `lib/actions.ts` | Semua logika submit form (Server Actions) |
+| `lib/settings.ts` | Aturan jam mulai standar & cut off |
+| `lib/db.ts` | Skema database & koneksi Turso |
+| `app/globals.css` + `tailwind.config.ts` | Warna, gaya kartu, tombol, dsb. |
+
+Contoh perubahan umum:
+
+1. **Ganti warna/tampilan** — edit variabel warna di bagian atas
+   `app/globals.css` (mis. `--color-accent` untuk warna aksen biru), lalu
+   simpan. Semua tombol/kartu di seluruh halaman otomatis ikut berubah
+   karena memakai kelas yang sama (`.btn-primary`, `.card`, dst).
+2. **Tambah kolom baru di form lembur** — tambahkan field di
+   `components/OvertimeForm.tsx`, lalu proses nilainya di
+   `createSubmissionAction` (`lib/actions.ts`), dan tambahkan kolomnya di
+   tabel `submissions` pada `lib/db.ts` (bagian `CREATE TABLE`).
+3. **Tambah field pengaturan baru** — tambahkan key baru di
+   `lib/settings.ts` (`AppSettings` type + default value), lalu tambahkan
+   input-nya di `app/admin/settings/page.tsx` dan proses di
+   `updateSettingsAction`.
+
+### Menguji perubahan sebelum di-push
+
+```bash
+npm install   # sekali saja / setelah menambah dependency baru
+npm run dev
+```
+
+Buka `http://localhost:3000` — aplikasi otomatis memakai database SQLite
+lokal (`data/app.db`) terpisah dari database Turso produksi, jadi aman untuk
+coba-coba tanpa mengubah data asli.
+
+### Menerapkan perubahan ke situs yang sudah online
+
+```bash
+git add -A
+git commit -m "Deskripsi singkat perubahan"
+git push
+```
+
+Vercel otomatis mendeteksi push ini dan mem-build ulang situs — biasanya
+selesai dalam 1-2 menit, tanpa langkah manual apa pun. Jika ingin
+menjalankan perintah git tapi belum familiar, bisa juga minta bantuan
+Claude langsung di sesi berikutnya untuk melakukan perubahan + push-nya.
 
 ## Rencana Pengembangan Selanjutnya
 

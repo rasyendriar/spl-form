@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { queryAll } from '@/lib/db';
 import { deleteSubmissionAction } from '@/lib/actions';
 import { formatDateID, formatDuration } from '@/lib/utils';
@@ -39,6 +40,11 @@ function buildQuery(from?: string, to?: string) {
   return { sql, params };
 }
 
+const OK_MESSAGES: Record<string, string> = {
+  deleted: 'Pengajuan berhasil dihapus.',
+  updated: 'Pengajuan berhasil diperbarui.',
+};
+
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
@@ -52,22 +58,23 @@ export default async function AdminSubmissionsPage({
   const rows = await queryAll<Row>(sql, queryParams);
 
   const exportHref = `/admin/submissions/export?${new URLSearchParams({ from, to }).toString()}`;
+  const ok = params.ok ? OK_MESSAGES[params.ok] : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold">Rekap Pengajuan Lembur</h1>
-          <p className="text-sm text-slate-500">Total {rows.length} pengajuan ditampilkan.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Rekap Pengajuan Lembur</h1>
+          <p className="text-sm text-[color:var(--color-ink-secondary)]">
+            Total {rows.length} pengajuan ditampilkan.
+          </p>
         </div>
         <a href={exportHref} className="btn-primary">
           Export ke Excel
         </a>
       </div>
 
-      {params.ok === 'deleted' && (
-        <p className="alert-success">Pengajuan berhasil dihapus.</p>
-      )}
+      {ok && <p className="alert-success">{ok}</p>}
 
       <form className="card p-4 flex flex-wrap items-end gap-4" method="get">
         <div>
@@ -86,7 +93,10 @@ export default async function AdminSubmissionsPage({
           Filter
         </button>
         {(from || to) && (
-          <a href="/admin/submissions" className="text-sm text-slate-500 underline">
+          <a
+            href="/admin/submissions"
+            className="text-sm text-[color:var(--color-ink-secondary)] underline"
+          >
             Reset filter
           </a>
         )}
@@ -94,7 +104,7 @@ export default async function AdminSubmissionsPage({
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
+          <thead className="bg-black/[0.03] text-left text-[color:var(--color-ink-secondary)]">
             <tr>
               <th className="px-4 py-3 font-medium">Tanggal</th>
               <th className="px-4 py-3 font-medium">Nama</th>
@@ -105,10 +115,13 @@ export default async function AdminSubmissionsPage({
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-black/5">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                <td
+                  colSpan={7}
+                  className="px-4 py-6 text-center text-[color:var(--color-ink-muted)]"
+                >
                   Belum ada data untuk rentang tanggal ini.
                 </td>
               </tr>
@@ -124,9 +137,17 @@ export default async function AdminSubmissionsPage({
                   {formatDuration(r.jam_mulai, r.jam_selesai)}
                 </td>
                 <td className="px-4 py-3 max-w-xs">{r.pekerjaan}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-slate-500">{r.submitted_by}</td>
-                <td className="px-4 py-3 text-right">
-                  <form action={deleteSubmissionAction}>
+                <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
+                  {r.submitted_by}
+                </td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <Link
+                    href={`/admin/submissions/${r.id}/edit`}
+                    className="btn-secondary text-xs mr-2"
+                  >
+                    Edit
+                  </Link>
+                  <form action={deleteSubmissionAction} className="inline">
                     <input type="hidden" name="id" value={r.id} />
                     <ConfirmSubmitButton
                       confirmMessage="Hapus pengajuan ini?"

@@ -22,8 +22,12 @@ export default async function LoginPage({
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-brand-600">Form SPL</h1>
-          <p className="text-sm text-slate-500 mt-1">Masuk untuk mengisi atau mengelola lembur</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[color:var(--color-ink)]">
+            Form SPL
+          </h1>
+          <p className="text-sm text-[color:var(--color-ink-secondary)] mt-1">
+            Masuk untuk mengisi atau mengelola lembur
+          </p>
         </div>
 
         <div className="card p-6">
@@ -66,7 +70,7 @@ export default async function LoginPage({
           </form>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-4">
+        <p className="text-center text-xs text-[color:var(--color-ink-muted)] mt-4">
           Lupa password? Hubungi admin untuk direset.
         </p>
       </div>
