@@ -55,7 +55,7 @@ export default async function AdminSettingsPage({
             </p>
           </div>
         </div>
-        <p className="text-sm text-[color:var(--color-ink-muted)]">Batas: {cutoffToday}</p>
+        <p className="text-sm text-[color:var(--color-ink-muted)]">Batas: {cutoffToday} WIB</p>
       </div>
 
       <form action={updateSettingsAction} className="space-y-6">
@@ -105,7 +105,8 @@ export default async function AdminSettingsPage({
 
         <p className="text-xs text-[color:var(--color-ink-muted)]">
           Setelah jam batas terlewati, form otomatis tertutup untuk hari itu dan terbuka lagi
-          keesokan harinya. Waktu mengikuti zona waktu server.
+          keesokan harinya. Semua jam batas di atas mengikuti WIB (Waktu Indonesia Barat),
+          apa pun zona waktu server aplikasi ini berjalan.
         </p>
 
         <button type="submit" className="btn-primary">

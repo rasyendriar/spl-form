@@ -84,7 +84,7 @@ export default async function FormPage({
         {!open && (
           <p className="alert-info">
             Form pengisian lembur sedang <strong>ditutup</strong> untuk hari ini ({cutoffLabel},
-            batas jam {cutoffToday}). Hubungi admin jika kamu perlu mengajukan lembur.
+            batas jam {cutoffToday} WIB). Hubungi admin jika kamu perlu mengajukan lembur.
           </p>
         )}
 
