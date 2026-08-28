@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { queryAll } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { formatDuration, grossPayMinutes, parseDurationMinutes } from '@/lib/utils';
+import { formatDateTimeID, formatDuration, grossPayMinutes, parseDurationMinutes } from '@/lib/utils';
 
 type Row = {
   nik: string | null;
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       Pekerjaan: r.pekerjaan,
       Status: STATUS_LABEL[r.status] ?? r.status,
       'Akun Pengisi': r.submitted_by,
-      'Waktu Pengajuan': r.created_at,
+      'Waktu Pengajuan': formatDateTimeID(r.created_at),
     };
   });
 

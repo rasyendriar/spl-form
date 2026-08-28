@@ -1,5 +1,5 @@
 import { queryAll, run } from './db';
-import { isValidHHMM } from './utils';
+import { isValidHHMM, jakartaNow } from './utils';
 
 export type AppSettings = {
   is_open: boolean;
@@ -37,14 +37,14 @@ export async function updateSettings(next: AppSettings) {
 
 /** Batas waktu pengisian hari ini (Minggu, Sabtu, atau Senin-Jumat punya jadwal masing-masing). */
 export function todaysCutoffTime(settings: AppSettings, now: Date = new Date()): string {
-  const day = now.getDay(); // 0=Minggu, 6=Sabtu
+  const day = jakartaNow(now).dayOfWeek; // 0=Minggu, 6=Sabtu, dihitung dalam WIB
   if (day === 0) return settings.sunday_cutoff_time;
   if (day === 6) return settings.saturday_cutoff_time;
   return settings.weekday_cutoff_time;
 }
 
 export function todaysCutoffLabel(now: Date = new Date()): string {
-  const day = now.getDay();
+  const day = jakartaNow(now).dayOfWeek;
   if (day === 0) return 'Minggu';
   if (day === 6) return 'Sabtu';
   return 'Hari Biasa (Senin–Jumat)';
@@ -56,6 +56,9 @@ export function isFormOpen(settings: AppSettings, now: Date = new Date()): boole
   if (!cutoff || !isValidHHMM(cutoff)) return true;
   const [h, m] = cutoff.split(':').map(Number);
   const cutoffMinutes = h * 60 + m;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  // Selalu bandingkan terhadap jam WIB, bukan jam lokal server (yang di
+  // Vercel berjalan di UTC) — ini penyebab cut-off dulu tidak bekerja.
+  const { hour, minute } = jakartaNow(now);
+  const nowMinutes = hour * 60 + minute;
   return nowMinutes <= cutoffMinutes;
 }

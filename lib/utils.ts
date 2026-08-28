@@ -1,3 +1,43 @@
+export const JAKARTA_TIMEZONE = 'Asia/Jakarta';
+
+/**
+ * Tanggal & jam "sekarang" menurut WIB, dibaca lewat Intl API supaya tidak
+ * bergantung pada zona waktu server (mis. Vercel yang berjalan di UTC) —
+ * inilah akar bug cut-off yang dulu memakai now.getHours()/getDay() lokal.
+ */
+export function jakartaNow(date: Date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  dayOfWeek: number; // 0=Minggu ... 6=Sabtu
+  dateStr: string; // 'YYYY-MM-DD'
+} {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: JAKARTA_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const dateStr = `${map.year}-${map.month}-${map.day}`;
+  // Aman dari efek zona waktu: date-only string diparsing sebagai UTC oleh spec.
+  const dayOfWeek = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    dayOfWeek,
+    dateStr,
+  };
+}
+
 /**
  * Jam istirahat tetap perusahaan — waktu yang tumpang tindih dengan jendela ini
  * otomatis tidak dihitung sebagai jam lembur.
@@ -132,18 +172,22 @@ export function formatDateShortID(dateStr: string): string {
 
 export function formatDateTimeID(value: string): string {
   if (!value) return '-';
-  const d = new Date(value);
+  // Nilai dari SQLite datetime('now') adalah UTC tanpa penanda zona waktu
+  // (mis. "2026-08-28 09:34:56"), yang kalau langsung di-parse `new Date()`
+  // akan dianggap jam lokal server (bisa UTC, bisa bukan). Tandai eksplisit
+  // sebagai UTC di sini, lalu tampilkan dalam WIB apa pun zona waktu server.
+  const normalized = /Z|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value.replace(' ', 'T')}Z`;
+  const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString('id-ID', {
+  return `${d.toLocaleString('id-ID', {
     dateStyle: 'long',
     timeStyle: 'short',
-  });
+    timeZone: JAKARTA_TIMEZONE,
+  })} WIB`;
 }
 
 export function todayInputValue(): string {
-  const now = new Date();
-  const tzOffsetMs = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  return jakartaNow().dateStr;
 }
 
 /** 0=Sunday ... 6=Saturday, computed from a 'YYYY-MM-DD' date string. */
@@ -160,8 +204,8 @@ export function isValidHHMM(value: string): boolean {
 }
 
 export function currentMonthValue(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const now = jakartaNow();
+  return `${now.year}-${String(now.month).padStart(2, '0')}`;
 }
 
 /** Given 'YYYY-MM', returns the inclusive date range as 'YYYY-MM-DD' strings. */

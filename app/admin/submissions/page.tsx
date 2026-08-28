@@ -7,7 +7,7 @@ import {
   rejectSubmissionAction,
   resetSubmissionStatusAction,
 } from '@/lib/actions';
-import { formatDateID, formatDuration } from '@/lib/utils';
+import { formatDateID, formatDateTimeID, formatDuration } from '@/lib/utils';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 import StatusBadge from '@/components/StatusBadge';
 
@@ -208,6 +208,9 @@ export default async function AdminSubmissionsPage({
             </p>
             <p className="text-sm text-[color:var(--color-ink-muted)]">{r.pekerjaan}</p>
             <p className="text-xs text-[color:var(--color-ink-muted)]">Diisi oleh {r.submitted_by}</p>
+            <p className="text-xs text-[color:var(--color-ink-muted)]">
+              Diajukan: {formatDateTimeID(r.created_at)}
+            </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <ReviewActions row={r} />
               <Link href={`/admin/submissions/${r.id}/edit`} className="btn-secondary btn-sm">
@@ -236,6 +239,7 @@ export default async function AdminSubmissionsPage({
               <th className="px-4 py-3 font-medium">Pekerjaan</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Akun Pengisi</th>
+              <th className="px-4 py-3 font-medium">Diajukan Pada</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -243,7 +247,7 @@ export default async function AdminSubmissionsPage({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-6 text-center text-[color:var(--color-ink-muted)]"
                 >
                   Belum ada data untuk filter ini.
@@ -266,6 +270,9 @@ export default async function AdminSubmissionsPage({
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
                   {r.submitted_by}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-[color:var(--color-ink-secondary)]">
+                  {formatDateTimeID(r.created_at)}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col items-end gap-2">
