@@ -49,7 +49,7 @@ export default async function LoginPage({
                 autoComplete="username"
                 required
                 className="input"
-                placeholder="mis. budi.lapangan"
+                placeholder="Contoh: iat_cakri"
               />
             </div>
 

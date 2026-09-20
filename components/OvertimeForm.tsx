@@ -1,10 +1,43 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { Plus, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
 import { createSubmissionAction } from '@/lib/actions';
+import { validateSubmissionBlocks } from '@/lib/validation';
 import TimeSelect from './TimeSelect';
 import EmployeePicker, { Employee, PersonValue } from './EmployeePicker';
+
+export const DRAFT_KEY = 'spl_form_draft_v1';
+
+type Draft = { tanggalLembur: string; blocks: Block[] };
+
+function readDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.blocks) || parsed.blocks.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft: Draft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // penyimpanan draft cuma nice-to-have; abaikan kalau storage penuh/diblokir
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // no-op
+  }
+}
 
 type Block = {
   id: string;
@@ -35,16 +68,57 @@ export default function OvertimeForm({
   defaultDate,
   employees,
   disabled,
+  submittedOk,
 }: {
   defaultPerson: PersonValue;
   defaultDate: string;
   employees: Employee[];
   disabled: boolean;
+  /** true right after a successful save (?ok=1) — clears any leftover draft instead of restoring it. */
+  submittedOk?: boolean;
 }) {
+  const initialBlock: Block = {
+    id: nextId(),
+    people: [defaultPerson],
+    pekerjaan: '',
+    jamMulai: '',
+    jamSelesai: '',
+  };
+
   const [tanggalLembur, setTanggalLembur] = useState(defaultDate);
-  const [blocks, setBlocks] = useState<Block[]>([
-    { id: nextId(), people: [defaultPerson], pekerjaan: '', jamMulai: '', jamSelesai: '' },
-  ]);
+  const [blocks, setBlocks] = useState<Block[]>([initialBlock]);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [blockErrors, setBlockErrors] = useState<Record<number, string[]>>({});
+  const [isPending, startTransition] = useTransition();
+
+  // Draft ini menjaga isian form tetap ada kalau pengiriman gagal di server
+  // (mis. form ternyata baru ditutup admin) — sebelumnya redirect balik ke
+  // /form me-remount komponen ini dan menghapus semua yang sudah diketik user.
+  const skipNextPersistRef = useRef(false);
+
+  useEffect(() => {
+    if (submittedOk) {
+      clearDraft();
+      // Cegah effect persist-draft di bawah langsung menulis ulang draft
+      // kosong pada render pertama ini, supaya key-nya benar-benar hilang.
+      skipNextPersistRef.current = true;
+      return;
+    }
+    const draft = readDraft();
+    if (draft) {
+      setTanggalLembur(draft.tanggalLembur || defaultDate);
+      setBlocks(draft.blocks);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+    writeDraft({ tanggalLembur, blocks });
+  }, [tanggalLembur, blocks]);
 
   const blocksJson = useMemo(
     () =>
@@ -98,9 +172,40 @@ export default function OvertimeForm({
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   }
 
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const validation = validateSubmissionBlocks(blocks, tanggalLembur);
+    if (!validation.valid) {
+      if (validation.reason === 'empty') {
+        setFormError('Isi tanggal, minimal satu nama, pekerjaan, jam mulai, dan jam selesai.');
+        setBlockErrors({});
+      } else {
+        setFormError(
+          'Setiap pekerjaan wajib punya nama, pekerjaan, jam mulai, dan jam selesai yang valid.'
+        );
+        const map: Record<number, string[]> = {};
+        for (const err of validation.blockErrors) {
+          map[err.blockIndex] = [...(map[err.blockIndex] ?? []), err.message];
+        }
+        setBlockErrors(map);
+      }
+      return;
+    }
+
+    setFormError(null);
+    setBlockErrors({});
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      await createSubmissionAction(formData);
+    });
+  }
+
   return (
-    <form action={createSubmissionAction} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <input type="hidden" name="blocks_json" value={blocksJson} />
+
+      {formError && <p className="alert-error">{formError}</p>}
 
       <div>
         <label className="label" htmlFor="tanggal_lembur">
@@ -138,6 +243,12 @@ export default function OvertimeForm({
                 </button>
               )}
             </div>
+
+            {blockErrors[blockIndex] && (
+              <p className="text-xs text-[color:var(--color-danger)]">
+                {blockErrors[blockIndex].join(' ')}
+              </p>
+            )}
 
             <div>
               <label className="label">Nama Orang yang Lembur</label>
@@ -253,8 +364,8 @@ export default function OvertimeForm({
         </button>
       )}
 
-      <button type="submit" className="btn-primary w-full" disabled={disabled}>
-        Simpan Pengajuan
+      <button type="submit" className="btn-primary w-full" disabled={disabled || isPending}>
+        {isPending ? 'Menyimpan...' : 'Simpan Pengajuan'}
       </button>
     </form>
   );
