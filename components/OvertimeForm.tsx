@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } f
 import { Plus, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
 import { createSubmissionAction } from '@/lib/actions';
 import { validateSubmissionBlocks } from '@/lib/validation';
+import { shiftDateStr, todayInputValue } from '@/lib/utils';
 import TimeSelect from './TimeSelect';
 import EmployeePicker, { Employee, PersonValue } from './EmployeePicker';
 
@@ -91,6 +92,10 @@ export default function OvertimeForm({
   const [blockErrors, setBlockErrors] = useState<Record<number, string[]>>({});
   const [isPending, startTransition] = useTransition();
 
+  // Pembuatan SPL cuma boleh untuk H-1, hari ini, atau H+1.
+  const minDate = shiftDateStr(defaultDate, -1);
+  const maxDate = shiftDateStr(defaultDate, 1);
+
   // Draft ini menjaga isian form tetap ada kalau pengiriman gagal di server
   // (mis. form ternyata baru ditutup admin) — sebelumnya redirect balik ke
   // /form me-remount komponen ini dan menghapus semua yang sudah diketik user.
@@ -175,10 +180,13 @@ export default function OvertimeForm({
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const validation = validateSubmissionBlocks(blocks, tanggalLembur);
+    const validation = validateSubmissionBlocks(blocks, tanggalLembur, todayInputValue());
     if (!validation.valid) {
       if (validation.reason === 'empty') {
         setFormError('Isi tanggal, minimal satu nama, pekerjaan, jam mulai, dan jam selesai.');
+        setBlockErrors({});
+      } else if (validation.reason === 'date_out_of_range') {
+        setFormError('Tanggal lembur hanya bisa untuk H-1, hari ini, atau H+1.');
         setBlockErrors({});
       } else {
         setFormError(
@@ -217,12 +225,14 @@ export default function OvertimeForm({
           type="date"
           required
           disabled={disabled}
+          min={minDate}
+          max={maxDate}
           value={tanggalLembur}
           onChange={(e) => setTanggalLembur(e.target.value)}
           className="input max-w-xs"
         />
         <p className="text-xs text-[color:var(--color-ink-muted)] mt-1.5">
-          Bisa pilih tanggal lain jika ini rencana lembur di hari mendatang.
+          Hanya bisa untuk H-1, hari ini, atau H+1.
         </p>
       </div>
 

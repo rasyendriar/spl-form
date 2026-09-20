@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { queryAll, queryOne, run, runBatch } from './db';
 import { createSession, destroySession, getSession } from './session';
 import { getSettings, isFormOpen, updateSettings } from './settings';
-import { isValidHHMM } from './utils';
+import { isValidHHMM, todayInputValue } from './utils';
 import { validateSubmissionBlocks } from './validation';
 
 async function requireAdmin() {
@@ -121,7 +121,7 @@ export async function createSubmissionAction(formData: FormData) {
     jamSelesai: String(raw?.jamSelesai ?? '').trim(),
   }));
 
-  const validation = validateSubmissionBlocks(parsedBlocks, tanggal_lembur);
+  const validation = validateSubmissionBlocks(parsedBlocks, tanggal_lembur, todayInputValue());
   if (!validation.valid) {
     redirect(`/form?error=${validation.reason}`);
   }

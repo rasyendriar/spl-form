@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, LayoutDashboard, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { queryAll } from '@/lib/db';
+import DailyTrendChart from '@/components/DailyTrendChart';
 import {
   currentMonthValue,
-  formatDateShortID,
   formatMinutesCompact,
   formatMinutesLong,
   formatMonthLabelID,
@@ -131,18 +131,21 @@ export default async function AdminDashboardPage({
 
   const { start } = monthRange(month);
   const daysInMonth = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
-  const dayMinutes = new Map<string, number>();
+  const dayMinutes = new Map<string, { net: number; gross: number }>();
   for (const r of rows) {
-    dayMinutes.set(
-      r.tanggal_lembur,
-      (dayMinutes.get(r.tanggal_lembur) ?? 0) + parseDurationMinutes(r.jam_mulai, r.jam_selesai)
-    );
+    const net = parseDurationMinutes(r.jam_mulai, r.jam_selesai);
+    const gross = grossPayMinutes(net, r.tanggal_lembur, r.piket === null ? null : r.piket === 1);
+    const existing = dayMinutes.get(r.tanggal_lembur);
+    dayMinutes.set(r.tanggal_lembur, {
+      net: (existing?.net ?? 0) + net,
+      gross: (existing?.gross ?? 0) + gross,
+    });
   }
   const dailySeries = Array.from({ length: daysInMonth }, (_, i) => {
     const date = `${start.slice(0, 8)}${String(i + 1).padStart(2, '0')}`;
-    return { date, minutes: dayMinutes.get(date) ?? 0 };
+    const point = dayMinutes.get(date);
+    return { date, netMinutes: point?.net ?? 0, grossMinutes: point?.gross ?? 0 };
   });
-  const maxDayMinutes = Math.max(...dailySeries.map((d) => d.minutes), 1);
 
   const peopleCount = peopleMinutes.size;
   const avgMinutes = peopleCount > 0 ? totalMinutes / peopleCount : 0;
@@ -207,7 +210,7 @@ export default async function AdminDashboardPage({
           delta={<Delta current={totalMinutes} previous={prev.totalMinutes} />}
         />
         <StatTile
-          label="Jam Kotor (Dasar Gaji)"
+          label="Jam Bersih (Dasar Gaji)"
           value={formatMinutesCompact(totalGrossMinutes)}
           delta={<Delta current={totalGrossMinutes} previous={prev.totalGrossMinutes} />}
           icon={<Wallet size={12} />}
@@ -223,14 +226,9 @@ export default async function AdminDashboardPage({
       </div>
 
       <div className="card p-4 sm:p-6">
-        <h2 className="font-semibold mb-1 flex items-center gap-1.5">
+        <h2 className="font-semibold mb-4 flex items-center gap-1.5">
           Jam Lembur per Orang
         </h2>
-        <p className="text-xs sm:text-sm text-[color:var(--color-ink-secondary)] mb-4">
-          Diurutkan dari yang paling banyak lembur bulan ini. Jam kotor = dasar
-          pembayaran gaji (Senin–Sabtu: 1 jam × 1,5, sisanya × 2 — Minggu &amp; Sabtu
-          non-piket: semua jam × 2).
-        </p>
         {ranking.length === 0 ? (
           <p className="text-sm text-[color:var(--color-ink-muted)] py-6 text-center">
             Belum ada data lembur bulan ini.
@@ -244,7 +242,7 @@ export default async function AdminDashboardPage({
                   <p className="w-16 sm:w-40 shrink-0 truncate text-[13px] sm:text-sm">{p.nama}</p>
                   <div
                     className="flex-1 h-5 sm:h-6 rounded-full bg-[color:var(--color-accent-tint)] relative overflow-hidden"
-                    title={`${p.nama}: ${formatMinutesLong(p.minutes)} bersih · ${formatMinutesCompact(p.grossMinutes)} kotor`}
+                    title={`${p.nama}: ${formatMinutesLong(p.minutes)} kotor · ${formatMinutesCompact(p.grossMinutes)} bersih`}
                   >
                     <div
                       className="h-full rounded-full bg-[#2a78d6] transition-all duration-500"
@@ -253,10 +251,10 @@ export default async function AdminDashboardPage({
                   </div>
                   <div className="w-24 sm:w-36 shrink-0 text-right">
                     <p className="text-[13px] sm:text-sm tabular-nums text-[color:var(--color-ink)]">
-                      {formatMinutesCompact(p.minutes)}
+                      {formatMinutesCompact(p.minutes)} kotor
                     </p>
                     <p className="text-[10px] sm:text-xs tabular-nums text-[color:var(--color-accent)]">
-                      {formatMinutesCompact(p.grossMinutes)} kotor
+                      {formatMinutesCompact(p.grossMinutes)} bersih
                     </p>
                   </div>
                 </div>
@@ -266,47 +264,7 @@ export default async function AdminDashboardPage({
         )}
       </div>
 
-      <div className="card p-4 sm:p-6">
-        <h2 className="font-semibold mb-1">Tren Harian</h2>
-        <p className="text-xs sm:text-sm text-[color:var(--color-ink-secondary)] mb-4">
-          Total jam lembur bersih (semua orang) per tanggal dalam {formatMonthLabelID(month)}.
-        </p>
-        {totalMinutes === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-muted)] py-6 text-center">
-            Belum ada data lembur bulan ini.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <div
-              className="flex items-end gap-[2px] h-32 sm:h-40 border-b border-[color:var(--color-border)]"
-              style={{ minWidth: `${daysInMonth * 14}px` }}
-            >
-              {dailySeries.map((d) => {
-                const pct = Math.max((d.minutes / maxDayMinutes) * 100, d.minutes > 0 ? 4 : 1.5);
-                return (
-                  <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full">
-                    <div
-                      className="w-full rounded-t-[4px] bg-[#2a78d6] transition-all duration-500"
-                      style={{ height: `${pct}%`, opacity: d.minutes > 0 ? 1 : 0.15 }}
-                      title={`${formatDateShortID(d.date)}: ${formatMinutesLong(d.minutes)}`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-[2px] mt-1" style={{ minWidth: `${daysInMonth * 14}px` }}>
-              {dailySeries.map((d) => (
-                <p
-                  key={d.date}
-                  className="flex-1 text-center text-[9px] text-[color:var(--color-ink-muted)]"
-                >
-                  {Number(d.date.slice(8, 10))}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <DailyTrendChart series={dailySeries} />
     </div>
   );
 }

@@ -68,10 +68,10 @@ export async function GET(request: NextRequest) {
       Nama: r.nama,
       'Jam Mulai': r.jam_mulai,
       'Jam Selesai': r.jam_selesai,
-      'Durasi Bersih': formatDuration(r.jam_mulai, r.jam_selesai),
-      'Jam Bersih (angka)': Math.round((netMinutes / 60) * 100) / 100,
+      'Durasi Kotor': formatDuration(r.jam_mulai, r.jam_selesai),
+      'Jam Kotor (angka)': Math.round((netMinutes / 60) * 100) / 100,
       'Piket Sabtu': piket === null ? '' : piket ? 'Ya' : 'Tidak',
-      'Jam Kotor / Gaji (angka)':
+      'Jam Bersih / Gaji (angka)':
         Math.round((grossPayMinutes(netMinutes, r.tanggal_lembur, piket) / 60) * 100) / 100,
       Pekerjaan: r.pekerjaan,
       Status: STATUS_LABEL[r.status] ?? r.status,

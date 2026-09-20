@@ -14,6 +14,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   closed: 'Pengisian form sedang ditutup untuk hari ini. Silakan hubungi admin.',
   empty: 'Isi tanggal, minimal satu nama, pekerjaan, jam mulai, dan jam selesai.',
   invalid_block: 'Setiap pekerjaan wajib punya nama, pekerjaan, jam mulai, dan jam selesai yang valid.',
+  date_out_of_range: 'Tanggal lembur hanya bisa untuk H-1, hari ini, atau H+1.',
   locked: 'Pengajuan yang sudah diproses admin (disetujui/ditolak) tidak bisa dihapus sendiri.',
 };
 

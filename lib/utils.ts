@@ -47,6 +47,13 @@ export const BREAK_WINDOWS: { start: string; end: string; startMin: number; endM
   { start: '17:30', end: '18:30', startMin: 17 * 60 + 30, endMin: 18 * 60 + 30 },
 ];
 
+/**
+ * Batas atas rentang lembur yang masuk akal, dalam menit. Jam mulai & selesai
+ * yang sama, atau rentang yang jauh melebihi ini, hampir pasti salah pilih —
+ * bukan lembur 24 jam sungguhan — jadi ditolak di lib/validation.ts.
+ */
+export const MAX_OVERTIME_SPAN_MINUTES = 16 * 60;
+
 function toMinutesOfDay(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
@@ -144,11 +151,15 @@ export function formatMinutesLong(totalMinutes: number): string {
   return m ? `${h} jam ${m} menit` : `${h} jam`;
 }
 
-export function formatMinutesCompact(totalMinutes: number): string {
+/** Angka jam saja (mis. "5,5"), tanpa akhiran "jam" — dipakai untuk label ringkas di chart. */
+export function formatHoursNumber(totalMinutes: number): string {
   const hours = totalMinutes / 60;
   const rounded = Math.round(hours * 10) / 10;
-  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
-  return `${text} jam`;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
+}
+
+export function formatMinutesCompact(totalMinutes: number): string {
+  return `${formatHoursNumber(totalMinutes)} jam`;
 }
 
 export function formatDateID(dateStr: string): string {
@@ -223,6 +234,15 @@ export function shiftMonth(month: string, delta: number): string {
   const [yearStr, monthStr] = month.split('-');
   const date = new Date(Number(yearStr), Number(monthStr) - 1 + delta, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Geser 'YYYY-MM-DD' sejumlah `deltaDays` (boleh negatif), dijaga aman dari efek zona waktu. */
+export function shiftDateStr(dateStr: string, deltaDays: number): string {
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const date = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr) + deltaDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
 }
 
 export function formatMonthLabelID(month: string): string {

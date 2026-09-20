@@ -1,6 +1,6 @@
 'use client';
 
-const STEP_MINUTES = 5;
+const STEP_MINUTES = 30;
 
 const OPTIONS = Array.from({ length: (24 * 60) / STEP_MINUTES }, (_, i) => {
   const totalMinutes = i * STEP_MINUTES;
@@ -10,7 +10,7 @@ const OPTIONS = Array.from({ length: (24 * 60) / STEP_MINUTES }, (_, i) => {
 });
 
 /**
- * Single dropdown covering the whole day in 5-minute steps — one tap on
+ * Single dropdown covering the whole day in 30-minute steps — one tap on
  * mobile picks hour+minute together, instead of two separate hour/minute
  * selects. Always renders as 24-hour HH:MM regardless of browser/OS locale,
  * unlike the native <input type="time"> whose displayed format (12h vs 24h)

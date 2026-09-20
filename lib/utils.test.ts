@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { grossPayMinutes, isValidHHMM, parseDurationMinutes } from './utils';
+import {
+  formatHoursNumber,
+  grossPayMinutes,
+  isValidHHMM,
+  parseDurationMinutes,
+  rawSpanMinutes,
+  shiftDateStr,
+} from './utils';
 
 describe('isValidHHMM', () => {
   it('accepts valid 24h times', () => {
@@ -45,5 +52,35 @@ describe('grossPayMinutes', () => {
 
   it('applies the standard weekday-style tiers on Saturday for a piket Staff employee', () => {
     expect(grossPayMinutes(90, '2026-09-19', true)).toBe(150);
+  });
+});
+
+describe('rawSpanMinutes edge case: identical start/end', () => {
+  it('previously silently treated equal jam mulai/selesai as a near-24h span', () => {
+    // Documents why lib/validation.ts explicitly rejects jamMulai === jamSelesai:
+    // left unguarded, this function alone would report a full 24-hour shift.
+    expect(rawSpanMinutes('08:00', '08:00')).toBe(24 * 60);
+  });
+});
+
+describe('shiftDateStr', () => {
+  it('shifts forward and backward within a month', () => {
+    expect(shiftDateStr('2026-09-20', 1)).toBe('2026-09-21');
+    expect(shiftDateStr('2026-09-20', -1)).toBe('2026-09-19');
+  });
+
+  it('rolls over month and year boundaries', () => {
+    expect(shiftDateStr('2026-09-30', 1)).toBe('2026-10-01');
+    expect(shiftDateStr('2026-01-01', -1)).toBe('2025-12-31');
+  });
+});
+
+describe('formatHoursNumber', () => {
+  it('formats whole hours without a decimal', () => {
+    expect(formatHoursNumber(120)).toBe('2');
+  });
+
+  it('formats fractional hours with a comma', () => {
+    expect(formatHoursNumber(330)).toBe('5,5');
   });
 });
