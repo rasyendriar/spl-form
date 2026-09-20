@@ -7,6 +7,7 @@ import { queryAll, queryOne, run, runBatch } from './db';
 import { createSession, destroySession, getSession } from './session';
 import { getSettings, isFormOpen, updateSettings } from './settings';
 import { isValidHHMM } from './utils';
+import { validateSubmissionBlocks } from './validation';
 
 async function requireAdmin() {
   const session = await getSession();
@@ -107,6 +108,24 @@ export async function createSubmissionAction(formData: FormData) {
     redirect('/form?error=empty');
   }
 
+  const parsedBlocks = (rawBlocks as SubmissionBlock[]).map((raw) => ({
+    people: Array.isArray(raw?.people)
+      ? raw.people.map((p) => ({
+          nik: p?.nik ? String(p.nik).trim() : null,
+          nama: String(p?.nama ?? '').trim(),
+          piket: typeof p?.piket === 'boolean' ? p.piket : null,
+        }))
+      : [],
+    pekerjaan: String(raw?.pekerjaan ?? '').trim(),
+    jamMulai: String(raw?.jamMulai ?? '').trim(),
+    jamSelesai: String(raw?.jamSelesai ?? '').trim(),
+  }));
+
+  const validation = validateSubmissionBlocks(parsedBlocks, tanggal_lembur);
+  if (!validation.valid) {
+    redirect(`/form?error=${validation.reason}`);
+  }
+
   const rowsToInsert: {
     nik: string | null;
     nama: string;
@@ -116,34 +135,18 @@ export async function createSubmissionAction(formData: FormData) {
     jamSelesai: string;
   }[] = [];
 
-  for (const raw of rawBlocks as SubmissionBlock[]) {
-    const people = Array.isArray(raw?.people)
-      ? raw.people
-          .map((p) => ({
-            nik: p?.nik ? String(p.nik).trim() : null,
-            nama: String(p?.nama ?? '').trim(),
-            piket: typeof p?.piket === 'boolean' ? p.piket : null,
-          }))
-          .filter((p) => p.nama)
-      : [];
+  for (const block of parsedBlocks) {
+    const people = block.people.filter((p) => p.nama);
     if (people.length === 0) continue; // blok kosong, lewati saja
-
-    const pekerjaan = String(raw?.pekerjaan ?? '').trim();
-    const jamMulai = String(raw?.jamMulai ?? '').trim();
-    const jamSelesai = String(raw?.jamSelesai ?? '').trim();
-
-    if (!pekerjaan || !isValidHHMM(jamMulai) || !isValidHHMM(jamSelesai)) {
-      redirect('/form?error=invalid_block');
-    }
 
     for (const person of people) {
       rowsToInsert.push({
         nik: person.nik,
         nama: person.nama,
         piket: person.piket,
-        pekerjaan,
-        jamMulai,
-        jamSelesai,
+        pekerjaan: block.pekerjaan,
+        jamMulai: block.jamMulai,
+        jamSelesai: block.jamSelesai,
       });
     }
   }

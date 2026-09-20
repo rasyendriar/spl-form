@@ -105,6 +105,7 @@ export default async function FormPage({
             defaultDate={todayInputValue()}
             employees={employees}
             disabled={!open}
+            submittedOk={params.ok === '1'}
           />
         </div>
 
