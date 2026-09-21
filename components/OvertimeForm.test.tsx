@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OvertimeForm, { DRAFT_KEY } from './OvertimeForm';
 import { createSubmissionAction } from '@/lib/actions';
@@ -9,6 +9,14 @@ vi.mock('@/lib/actions', () => ({
   createSubmissionAction: vi.fn(),
 }));
 
+// Fix "today" so the H-1/H+1 date-window check in lib/validation.ts is
+// deterministic — the rest of lib/utils (shiftDateStr, isValidHHMM, etc.) is
+// left real, only the wall-clock lookup is stubbed.
+vi.mock('@/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/utils')>();
+  return { ...actual, todayInputValue: () => '2026-09-21' };
+});
+
 const mockedCreateSubmissionAction = vi.mocked(createSubmissionAction);
 
 const defaultPerson: PersonValue = { nik: null, nama: 'Test User' };
@@ -16,6 +24,7 @@ const employees: Employee[] = [
   { nik: '001', nama: 'Test User', section: 'Produksi', position: 'Operator' },
 ];
 // A Monday, so the Saturday-only "piket" checkbox never enters the picture.
+// Must match the stubbed todayInputValue() above.
 const defaultDate = '2026-09-21';
 
 function renderForm(props: Partial<React.ComponentProps<typeof OvertimeForm>> = {}) {
@@ -76,6 +85,52 @@ describe('OvertimeForm', () => {
     const [jamMulaiSelect, jamSelesaiSelect] = screen.getAllByLabelText('Jam');
     expect(jamMulaiSelect).toHaveValue('08:00');
     expect(jamSelesaiSelect).toHaveValue('10:00');
+  });
+
+  it('rejects a block where jam mulai and jam selesai are the same, without discarding input', async () => {
+    renderForm();
+
+    await fillPekerjaan('Cek panel listrik');
+    await selectJam('mulai', '08:00');
+    await selectJam('selesai', '08:00');
+
+    await userEvent.click(screen.getByRole('button', { name: /simpan pengajuan/i }));
+
+    expect(mockedCreateSubmissionAction).not.toHaveBeenCalled();
+    expect(screen.getByText('Jam mulai dan jam selesai tidak boleh sama.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Contoh: Perbaikan mesin produksi line 2')).toHaveValue(
+      'Cek panel listrik'
+    );
+  });
+
+  it('rejects a tanggal lembur outside the H-1/H+1 window', async () => {
+    renderForm();
+
+    // The date input also carries native min/max (asserted below) which
+    // browsers enforce on their own — this test instead proves our own JS
+    // check is a real backstop (e.g. for the page being left open across
+    // midnight, shifting what "today" means), so it submits the form
+    // directly rather than going through the native min/max-guarded click.
+    const dateInput = screen.getByLabelText('Tanggal Lembur');
+    expect(dateInput).toHaveAttribute('min', '2026-09-20');
+    expect(dateInput).toHaveAttribute('max', '2026-09-22');
+    fireEvent.change(dateInput, { target: { value: '2026-09-30' } }); // far outside the 3-day window
+
+    await fillPekerjaan('Lembur jauh hari');
+    await selectJam('mulai', '08:00');
+    await selectJam('selesai', '10:00');
+
+    const form = screen.getByRole('button', { name: /simpan pengajuan/i }).closest('form')!;
+    fireEvent.submit(form);
+
+    expect(mockedCreateSubmissionAction).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Tanggal lembur hanya bisa untuk H-1, hari ini, atau H+1.')
+    ).toBeInTheDocument();
+    // Input untuk pekerjaan tetap ada meski tanggalnya ditolak.
+    expect(screen.getByPlaceholderText('Contoh: Perbaikan mesin produksi line 2')).toHaveValue(
+      'Lembur jauh hari'
+    );
   });
 
   it('submits once all required fields are valid, and shows a pending state until the action resolves', async () => {

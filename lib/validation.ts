@@ -1,4 +1,4 @@
-import { isValidHHMM } from './utils';
+import { isValidHHMM, rawSpanMinutes, shiftDateStr, MAX_OVERTIME_SPAN_MINUTES } from './utils';
 
 export type ValidationPerson = { nik: string | null; nama: string; piket?: boolean | null };
 
@@ -18,7 +18,15 @@ export type BlockFieldError = {
 export type SubmissionValidation =
   | { valid: true }
   | { valid: false; reason: 'empty'; blockErrors: [] }
+  | { valid: false; reason: 'date_out_of_range'; blockErrors: [] }
   | { valid: false; reason: 'invalid_block'; blockErrors: BlockFieldError[] };
+
+/** Tanggal SPL cuma boleh H-1, hari ini, atau H+1 — relatif ke `todayStr` (WIB). */
+export function isDateWithinSubmissionWindow(dateStr: string, todayStr: string): boolean {
+  const min = shiftDateStr(todayStr, -1);
+  const max = shiftDateStr(todayStr, 1);
+  return dateStr >= min && dateStr <= max;
+}
 
 /**
  * Single source of truth for what makes a lembur submission valid, shared by
@@ -31,10 +39,15 @@ export type SubmissionValidation =
  */
 export function validateSubmissionBlocks(
   blocks: ValidationBlock[],
-  tanggalLembur: string
+  tanggalLembur: string,
+  todayStr: string
 ): SubmissionValidation {
   if (!tanggalLembur.trim()) {
     return { valid: false, reason: 'empty', blockErrors: [] };
+  }
+
+  if (!isDateWithinSubmissionWindow(tanggalLembur, todayStr)) {
+    return { valid: false, reason: 'date_out_of_range', blockErrors: [] };
   }
 
   const blockErrors: BlockFieldError[] = [];
@@ -49,11 +62,30 @@ export function validateSubmissionBlocks(
     if (!block.pekerjaan.trim()) {
       blockErrors.push({ blockIndex, field: 'pekerjaan', message: 'Pekerjaan wajib diisi.' });
     }
-    if (!isValidHHMM(block.jamMulai)) {
+
+    const validMulai = isValidHHMM(block.jamMulai);
+    const validSelesai = isValidHHMM(block.jamSelesai);
+    if (!validMulai) {
       blockErrors.push({ blockIndex, field: 'jamMulai', message: 'Jam mulai wajib diisi.' });
     }
-    if (!isValidHHMM(block.jamSelesai)) {
+    if (!validSelesai) {
       blockErrors.push({ blockIndex, field: 'jamSelesai', message: 'Jam selesai wajib diisi.' });
+    }
+
+    if (validMulai && validSelesai) {
+      if (block.jamMulai === block.jamSelesai) {
+        blockErrors.push({
+          blockIndex,
+          field: 'jamSelesai',
+          message: 'Jam mulai dan jam selesai tidak boleh sama.',
+        });
+      } else if (rawSpanMinutes(block.jamMulai, block.jamSelesai) > MAX_OVERTIME_SPAN_MINUTES) {
+        blockErrors.push({
+          blockIndex,
+          field: 'jamSelesai',
+          message: 'Durasi lembur kepanjangan, cek lagi jam mulai/selesainya.',
+        });
+      }
     }
   });
 

@@ -9,18 +9,19 @@ mengekspor rekap data.
 - **Login user & admin.** Setiap orang login dengan username/password yang
   dibuatkan oleh admin (tanpa registrasi mandiri).
 - **Form pengajuan lembur** (untuk user lapangan):
-  - Tanggal lembur bebas dipilih (bisa hari lain untuk rencana ke depan —
-    termasuk lembur hari Minggu yang diajukan dari hari Sabtu).
+  - Tanggal lembur hanya bisa **H-1, hari ini, atau H+1** (rentang 3 hari).
   - **Pilih nama dari database karyawan** (ketik untuk mencari, tinggal
     klik) — atau tetap bisa ketik bebas untuk orang yang belum terdaftar.
-  - **Jam mulai & jam selesai bebas ditentukan sendiri** oleh yang lembur
-    (tidak ada standarisasi jam), memakai satu pemilih jam 24 jam sekali
-    pilih (`23:20`, bukan format AM/PM, dan tidak perlu pilih jam & menit
-    terpisah).
+  - **Jam mulai & jam selesai bebas ditentukan sendiri** oleh yang lembur,
+    memakai satu pemilih jam 24 jam sekali pilih dengan menit dibatasi ke
+    **:00 atau :30 saja** (`23:30`, bukan format AM/PM, dan tidak perlu
+    pilih jam & menit terpisah) supaya lebih simpel dipilih. Jam mulai dan
+    jam selesai tidak boleh sama, dan durasi lemburnya dibatasi maksimal
+    16 jam — cegah salah pilih yang bisa kehitung lembur nyaris 24 jam.
   - **Jam istirahat otomatis dikeluarkan dari hitungan lembur**: 12:30–13:30
     (istirahat siang) dan 17:30–18:30 (istirahat sore) — kalau jam lemburmu
-    melewati salah satu (atau keduanya), durasi yang tercatat sudah bersih
-    tanpa jam istirahat itu.
+    melewati salah satu (atau keduanya), durasi yang tercatat sudah dipotong
+    jam istirahat itu.
   - Khusus lembur hari **Sabtu untuk posisi Staff**, form akan menanyakan
     status **piket** per orang (piket = tarif standar, tidak piket = tarif
     seperti hari Minggu) — lihat bagian "Aturan Perhitungan Jam Lembur" di
@@ -34,15 +35,16 @@ mengekspor rekap data.
 - **Riwayat pengajuan** milik user sendiri; bisa dihapus selama masih
   berstatus "Menunggu" (yang sudah diproses admin terkunci dari user).
 - **Panel admin:**
-  - **Dashboard**: kartu ringkasan (total jam lembur bersih, **jam kotor
+  - **Dashboard**: kartu ringkasan (total jam lembur kotor, **jam bersih
     sebagai dasar gaji**, total pengajuan, jumlah orang aktif, rata-rata
     jam/orang) beserta perbandingan ke bulan lalu, ranking jam lembur per
-    orang (bersih & kotor), dan tren harian — bisa difilter per status
-    (default: yang sudah **Disetujui** saja).
+    orang (kotor & bersih), dan tren harian yang bisa di-toggle antara jam
+    kotor (merah) dan jam bersih (biru) dengan angka di tiap bar — bisa
+    difilter per status (default: yang sudah **Disetujui** saja).
   - **Pengajuan**: rekap semua pengajuan lembur (filter tanggal & status),
     **approve/reject** dengan alasan penolakan opsional, **edit** data lembur
-    secara manual, ekspor rekap ke Excel (termasuk kolom jam bersih & jam
-    kotor), dan **export format harian** yang mengikuti format kolom & sel
+    secara manual, ekspor rekap ke Excel (termasuk kolom jam kotor & jam
+    bersih), dan **export format harian** yang mengikuti format kolom & sel
     gabungan (merge) template internal (termasuk jam istirahat otomatis).
   - **Kelola Karyawan**: database karyawan (NIK, nama, section, posisi,
     grup) yang dipakai sebagai sumber dropdown nama di form — tambah satu
@@ -59,21 +61,29 @@ mengekspor rekap data.
 
 ## Aturan Perhitungan Jam Lembur
 
-Dua aturan bisnis berikut dihitung otomatis oleh sistem (kode di
-`lib/utils.ts`, fungsi `parseDurationMinutes` dan `grossPayMinutes`):
+> **Istilah:** "**jam kotor**" = jam kerja aktual (mulai–selesai, dikurangi
+> istirahat) — belum ada pengali gaji. "**Jam bersih**" = hasil setelah
+> dikali tarif lembur, dipakai sebagai dasar pembayaran gaji.
+
+Aturan bisnis berikut dihitung otomatis oleh sistem (kode di
+`lib/utils.ts` & `lib/validation.ts`, fungsi `parseDurationMinutes` dan
+`grossPayMinutes`):
 
 1. **Jam istirahat tidak dihitung lembur.** Ada dua jendela istirahat tetap:
    **12:30–13:30** dan **17:30–18:30**. Jika rentang jam mulai–selesai yang
    diisi user melewati salah satu (atau kedua) jendela ini, waktu yang
    tumpang tindih otomatis dikurangi dari durasi lembur. Contoh: lembur
-   17:00–20:00 (3 jam) memotong 1 jam istirahat sore → tercatat 2 jam bersih.
+   17:00–20:00 (3 jam) memotong 1 jam istirahat sore → tercatat 2 jam kotor.
    Berlaku untuk hari apa pun (Senin–Minggu).
-2. **Jam kotor (dasar pembayaran gaji)** — dihitung dari durasi bersih
+2. **Jam mulai ≠ jam selesai, dan durasi maksimal 16 jam.** Mencegah salah
+   pilih (mis. jam mulai & selesai sama-sama diisi jam yang sama) yang kalau
+   dibiarkan akan kehitung lembur nyaris 24 jam penuh.
+3. **Jam bersih (dasar pembayaran gaji)** — dihitung dari jam kotor
    (setelah dipotong istirahat), aturannya beda per hari:
    - **Senin–Sabtu (standar)**: 1 jam pertama × 1,5, sisanya × 2. Contoh: 3
-     jam bersih → 1 jam (× 1,5) + 2 jam (× 2) = 1,5 + 4 = **5,5 jam kotor**.
-   - **Minggu**: seluruh durasi bersih langsung × 2 (tanpa tingkatan jam
-     pertama). Contoh: 3 jam bersih → **6 jam kotor**.
+     jam kotor → 1 jam (× 1,5) + 2 jam (× 2) = 1,5 + 4 = **5,5 jam bersih**.
+   - **Minggu**: seluruh durasi kotor langsung × 2 (tanpa tingkatan jam
+     pertama). Contoh: 3 jam kotor → **6 jam bersih**.
    - **Sabtu, khusus posisi Staff**: saat mengisi form, tiap orang berposisi
      Staff yang lembur di hari Sabtu akan ditanya status **piket**. Kalau
      **piket** → pakai aturan standar Senin–Sabtu (1 jam × 1,5, sisanya × 2).
@@ -81,7 +91,7 @@ Dua aturan bisnis berikut dihitung otomatis oleh sistem (kode di
      selain Staff di hari Sabtu selalu pakai aturan standar, tidak ditanya
      piket.
 
-Nilai jam kotor ini yang ditampilkan di Dashboard dan kolom export sebagai
+Nilai jam bersih ini yang ditampilkan di Dashboard dan kolom export sebagai
 dasar perhitungan gaji lembur. Kalau jam istirahat atau rumus pengali ini
 berubah di kemudian hari, cukup ubah `BREAK_WINDOWS` dan `grossPayMinutes()`
 di `lib/utils.ts` — semua tempat yang menampilkan durasi (form, dashboard,
@@ -233,7 +243,8 @@ Struktur folder penting:
 | `app/admin/settings/page.tsx` | Pengaturan cut off harian |
 | `lib/actions.ts` | Semua logika submit form (Server Actions) |
 | `lib/settings.ts` | Aturan cut off harian (Senin–Jumat/Sabtu/Minggu) |
-| `lib/utils.ts` | Jam istirahat & rumus jam kotor (`BREAK_WINDOWS`, `grossPayMinutes`) |
+| `lib/utils.ts` | Jam istirahat & rumus jam bersih (`BREAK_WINDOWS`, `grossPayMinutes`) |
+| `lib/validation.ts` | Validasi pengajuan lembur (dipakai client & server): blok lengkap, jam mulai ≠ selesai, durasi maksimal, rentang tanggal H-1/H/H+1 |
 | `lib/db.ts` | Skema database, migrasi kolom, & koneksi Turso |
 | `lib/employee-seed.ts` | Data awal 30 karyawan (hanya dipakai sekali saat database masih kosong) |
 | `app/globals.css` + `tailwind.config.ts` | Warna, gaya kartu, tombol, animasi, dsb. |
